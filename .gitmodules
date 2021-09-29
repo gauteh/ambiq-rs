@@ -1,0 +1,3 @@
+[submodule "ambiq-hal-sys/ambiq-sparkfun-sdk"]
+	path = ambiq-hal-sys/ambiq-sparkfun-sdk
+	url = git@github.com:sparkfun/AmbiqSuiteSDK.git
