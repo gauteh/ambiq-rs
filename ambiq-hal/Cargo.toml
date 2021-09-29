@@ -11,7 +11,11 @@ cortex-m = "0.7.3"
 
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
+optional = true
 
 [dependencies.ambiq-apollo3-pac]
-git = "https://github.com/gauteh/ambiq-apollo3-pac.git"
-branch = "svd-0.19"
+path = "../pac/apollo3"
+
+[features]
+ambiq-sdk = [ "ambiq-hal-sys" ]
+

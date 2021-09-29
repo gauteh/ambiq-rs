@@ -13,4 +13,4 @@ glob = "*"
 
 [features]
 sparkfun-redboard = []
-default = ["sparkfun-redboard"]
+default = []
