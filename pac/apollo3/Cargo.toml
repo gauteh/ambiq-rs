@@ -1,0 +1,22 @@
+[package]
+name = "ambiq-apollo3-pac"
+version = "0.1.0"
+authors = ["Robert Cottrell <rgcottrell@gmail.com>"]
+description = "Peripheral access API for APOLLO3 microcontrollers"
+repository = "https://github.com/rgcottrell/ambiq-apollo3-pac"
+license = "MIT/Apache-2.0"
+keywords = ["ambiq", "apollo3", "svd2rust", "embedded", "no_std"]
+categories = ["embedded", "no-std"]
+edition = "2018"
+
+[dependencies]
+bare-metal = "0.2.4"
+cortex-m = "0.6.0"
+vcell = "0.1.0"
+
+[dependencies.cortex-m-rt]
+optional = true
+version = "0.6.8"
+
+[features]
+rt = ["cortex-m-rt/device"]
