@@ -1,5 +1,5 @@
 [package]
-name = "sparkfun-redboard-artemis"
+name = "sparkfun-redboard-artemis-halc"
 version = "0.1.0"
 edition = "2018"
 
@@ -8,5 +8,6 @@ edition = "2018"
 [dependencies]
 panic-halt = "0.2.0"
 
-[dependencies.ambiq-hal]
-path = "../../ambiq-hal"
+[dependencies.ambiq-hal-sys]
+path = "../../ambiq-hal-sys"
+features = ["sparkfun-redboard"]
