@@ -1,0 +1,5 @@
+name: ambiq
+channels:
+  - conda-forge
+dependencies:
+  - pyserial
