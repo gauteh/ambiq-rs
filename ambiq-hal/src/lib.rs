@@ -6,6 +6,7 @@ pub extern crate ambiq_apollo3_pac as pac;
 pub mod clock;
 pub mod time;
 pub mod delay;
+pub mod gpio;
 
 pub use hal::prelude;
 
