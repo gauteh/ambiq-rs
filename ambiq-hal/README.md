@@ -1,3 +1,13 @@
 # Ambiq Apollo3
 
 Hardware Abstraction Layer (HAL) for Ambiq Apollo3 based chipsets.
+
+# Runnin tests
+
+Library unit tests:
+
+`cargo test --lib`
+
+Examples compile tests:
+
+`cargo build --examples --features examples --target=thumbv7em-none-eabihf`

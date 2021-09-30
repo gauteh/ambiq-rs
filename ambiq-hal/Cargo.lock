@@ -30,6 +30,7 @@ dependencies = [
  "cortex-m-rt",
  "embedded-hal",
  "panic-halt",
+ "typenum",
 ]
 
 [[package]]
@@ -445,6 +446,12 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
+
+[[package]]
+name = "typenum"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
 
 [[package]]
 name = "unicode-width"

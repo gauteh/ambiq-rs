@@ -9,7 +9,12 @@ use cortex_m_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    let pac = hal::pac::Peripherals::take().unwrap();
+    let perip = hal::pac::Peripherals::take().unwrap();
+
+    let pins1 = hal::gpio::Pins::new(perip.GPIO);
+    // let pins2 = hal::gpio::Pins::new(perip.GPIO);
+
+    let adc = perip.ADC;
 
     loop {}
 }
