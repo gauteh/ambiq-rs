@@ -1,4 +1,5 @@
 #![feature(const_generics)]
+#![feature(concat_idents)]
 #![no_std]
 
 pub extern crate embedded_hal as hal;

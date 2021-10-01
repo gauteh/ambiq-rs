@@ -12,9 +12,16 @@ fn main() -> ! {
     let perip = hal::pac::Peripherals::take().unwrap();
 
     let pins1 = hal::gpio::Pins::new(perip.GPIO);
+
+    // This causes compile error:
     // let pins2 = hal::gpio::Pins::new(perip.GPIO);
 
     let adc = perip.ADC;
 
-    loop {}
+    // Set up led as GPIO output pin.
+    let led = pins1.d13;
+
+    loop {
+
+    }
 }
