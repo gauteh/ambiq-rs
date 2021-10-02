@@ -1,29 +1,30 @@
-use paste::paste;
+use core::marker::PhantomData;
 use pac::GPIO;
+use paste::paste;
 
 // The GPIO_PADKEY register must be set to 0x73 before writing to the PADREGn registers,
 // and should be cleared (or set to another value) afterwards.
 const PAD_KEY: u32 = 0x73;
 
 pub(crate) fn gpio_cfg<F, R>(f: F) -> R
-    where F: FnOnce() -> R
+where
+    F: FnOnce() -> R,
 {
     cortex_m::interrupt::free(|_| {
         // page 419
         unsafe {
-            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(PAD_KEY) );
+            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(PAD_KEY));
         }
 
         let r = f();
 
         unsafe {
-            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(0x00) );
+            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(0x00));
         }
 
         r
     })
 }
-
 
 /// The drive strength is controlled by setting registers:
 /// ALTPADCFGy_PADn_DS1 and PADREGy_PADnSTRNG.
@@ -65,32 +66,44 @@ pub enum Mode {
 /// GPIO Configuration Register E (Pads 32-39)
 /// GPIO Configuration Register F (Pads 40 -47)
 /// GPIO Configuration Register G (Pads 48-49)
-#[derive(PartialEq, Eq)]
-pub enum Pad {
-    A,
-    B,
-    C,
-    D,
-    E,
-    F,
-    G,
-}
 
-impl Pad {
-    pub const fn repr(&self) -> char {
-        use Pad::*;
-
-        match self {
-            A => 'a',
-            B => 'b',
-            _ => 'c'
+macro_rules! padreg {
+    ($name: ident) => {
+        &paste! {
+            (*pac::GPIO::ptr()).[<padreg $name>]
         }
-    }
-
+    };
 }
 
-// TODO: Implement this as a combination of types.
 pub struct Pin<const PINNUM: usize, const MODE: Mode> {}
+
+pub struct AnyPin<const MODE: Mode> {}
+
+pub trait PinCfg {
+    fn padpull(&mut self, on: bool);
+}
+
+macro_rules! pin {
+    ($id:literal, $padreg:ident) => {
+        paste! {
+            pub type [<P $id>]<const MODE: Mode> = Pin<$id, MODE>;
+
+            impl<const MODE: Mode>PinCfg for Pin<$id, MODE> {
+                fn padpull(&mut self, on: bool) {
+
+                    // XXX: Pad 20 differs in behavior to the rest of the pads, see p. 420.
+
+                    gpio_cfg(|| unsafe {
+                        (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
+                            .write(|p| p.[< pad $id pull >]().bit(on))
+                    })
+                }
+            }
+        }
+    };
+}
+
+pin!(5, B);
 
 impl<const P: usize> Pin<P, { Mode::Floating }> {
     pub fn new() -> Self {
@@ -122,62 +135,34 @@ impl<const P: usize, const M: Mode> Pin<P, M> {
         P
     }
 
-    pub const fn pad() -> Pad {
-        match P {
-            0..=3 => Pad::A,
-            4..=7 => Pad::B,
-            _ => Pad::A
-        }
-    }
-
-    pub fn into_push_pull_output(self) -> Pin<P, { Mode::Output }> {
-        // TODO: Configure as output
-        Pin {}
-    }
+    // pub fn into_push_pull_output(self) -> Pin<P, { Mode::Output }> {
+    //     // TODO: Configure as output
+    //     Pin {}
+    // }
 }
 
-macro_rules! padreg {
-    ($name: literal) => {
-        &paste! {
-            (*pac::GPIO::ptr()).[<padreg $name>]
-        }
-    }
-}
-
-impl<const P: usize> Pin<P, { Mode::Output }> {
+impl<const P: usize> Pin<P, { Mode::Output }>
+where
+    Pin<P, { Mode::Output }>: PinCfg,
+{
     /// Enable the internal pull up on the pin.
     pub fn internal_pull_up(&mut self, on: bool) {
-        use pac::gpio::padregb::PAD5PULL_A::*;
-
-        // 1) Set PAD_KEY
-        // 2) Write PADREG
-        // 3) Write CFG
-        // 4) Write AltPad
-        // 5) Clear PAD_KEY
-
-        // XXX: Pad 20 differs in behavior to the rest of the pads, see p. 420.
-
-        gpio_cfg(|| unsafe {
-            // let gpio = &(*pac::GPIO::ptr());
-            // let padreg = &paste! { gpio.[<padreg b>] };
-            padreg!("b").write(|p| p.pad5pull().variant(if on { EN } else { DIS }));
-        })
+        self.padpull(on)
     }
 
-    pub fn set_drive_strength(&mut self, d: DriveStrength) {
-    }
+    pub fn set_drive_strength(&mut self, d: DriveStrength) {}
 }
 
 pub struct Pins {
-    gpio: GPIO,
-    pub d13: Pin<5, { Mode::Floating }>,
+    _gpio: GPIO,
+    pub d13: P5<{ Mode::Floating }>,
 }
 
 impl Pins {
     pub fn new(gpio: GPIO) -> Pins {
         // Takes ownership of GPIO.
         Pins {
-            gpio,
+            _gpio: gpio,
             d13: Pin::new(),
         }
     }
