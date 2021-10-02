@@ -59,25 +59,7 @@ pub enum Mode {
     Output,
 }
 
-/// GPIO Configuration Register A (Pads 0-7)
-/// GPIO Configuration Register B (Pads 8-15)
-/// GPIO Configuration Register C (Pads 16-23)
-/// GPIO Configuration Register D (Pads 24-31)
-/// GPIO Configuration Register E (Pads 32-39)
-/// GPIO Configuration Register F (Pads 40 -47)
-/// GPIO Configuration Register G (Pads 48-49)
-
-macro_rules! padreg {
-    ($name: ident) => {
-        &paste! {
-            (*pac::GPIO::ptr()).[<padreg $name>]
-        }
-    };
-}
-
 pub struct Pin<const PINNUM: usize, const MODE: Mode> {}
-
-pub struct AnyPin<const MODE: Mode> {}
 
 pub trait PinCfg {
     fn padpull(&mut self, on: bool);
@@ -103,7 +85,6 @@ macro_rules! pin {
     };
 }
 
-pin!(5, B);
 
 impl<const P: usize> Pin<P, { Mode::Floating }> {
     pub fn new() -> Self {
@@ -167,6 +148,12 @@ impl Pins {
         }
     }
 }
+
+// Declare all the pins
+pin!(4, B);
+pin!(5, B);
+pin!(6, B);
+pin!(7, B);
 
 // #[cfg(test)]
 // mod tests {
