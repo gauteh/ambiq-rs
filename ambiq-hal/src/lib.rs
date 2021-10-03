@@ -11,7 +11,11 @@ pub mod time;
 pub mod delay;
 pub mod gpio;
 
-pub use hal::prelude;
+pub mod prelude {
+    pub use hal::prelude::*;
+
+    pub use hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
+}
 
 #[cfg(test)]
 mod tests {

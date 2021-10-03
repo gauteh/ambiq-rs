@@ -1,4 +1,5 @@
 use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
+use core::convert::Infallible;
 use pac::GPIO;
 use paste::paste;
 
@@ -174,9 +175,9 @@ impl<const P: usize> OutputPin for Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
 {
-    type Error = ();
+    type Error = Infallible;
 
-    fn set_low(&mut self) -> Result<(), ()> {
+    fn set_low(&mut self) -> Result<(), Infallible> {
         let mask: u32 = 0b1u32 << P % 32;
 
         let reg = unsafe {
@@ -193,7 +194,7 @@ where
         Ok(())
     }
 
-    fn set_high(&mut self) -> Result<(), ()> {
+    fn set_high(&mut self) -> Result<(), Infallible> {
         let mask: u32 = 0b1u32 << P % 32;
 
         let reg = unsafe {
@@ -215,9 +216,9 @@ impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
 {
-    type Error = ();
+    type Error = Infallible;
 
-    fn toggle(&mut self) -> Result<(), ()> {
+    fn toggle(&mut self) -> Result<(), Infallible> {
         let mask: u32 = 0b1u32 << P % 32;
 
         let reg = unsafe {

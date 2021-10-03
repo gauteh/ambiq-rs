@@ -3,7 +3,8 @@
 
 use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch panics
 
-extern crate ambiq_hal as hal;
+use ambiq_hal as hal;
+use hal::prelude::*;
 
 use cortex_m_rt::entry;
 
@@ -19,7 +20,9 @@ fn main() -> ! {
     let _adc = perip.ADC;
 
     // Set up led as GPIO output pin.
-    let _led = pins1.d13;
+    let mut led = pins1.d13.into_push_pull_output();
 
-    loop {}
+    loop {
+        led.toggle().unwrap();
+    }
 }
