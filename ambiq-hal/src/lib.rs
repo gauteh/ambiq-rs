@@ -1,3 +1,4 @@
+#![allow(incomplete_features)]
 #![feature(const_generics)]
 #![feature(const_fn_trait_bound)]
 #![no_std]

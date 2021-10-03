@@ -16,12 +16,10 @@ fn main() -> ! {
     // This causes compile error:
     // let pins2 = hal::gpio::Pins::new(perip.GPIO);
 
-    let adc = perip.ADC;
+    let _adc = perip.ADC;
 
     // Set up led as GPIO output pin.
-    let led = pins1.d13;
+    let _led = pins1.d13;
 
-    loop {
-
-    }
+    loop {}
 }

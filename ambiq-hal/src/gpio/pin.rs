@@ -1,4 +1,4 @@
-use core::marker::PhantomData;
+use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use pac::GPIO;
 use paste::paste;
 
@@ -62,23 +62,45 @@ pub enum Mode {
 pub struct Pin<const PINNUM: usize, const MODE: Mode> {}
 
 pub trait PinCfg {
-    fn padpull(&mut self, on: bool);
+    unsafe fn padfncsel(&mut self, f: u8);
+    unsafe fn padinpen(&mut self, on: bool);
+    unsafe fn padpull(&mut self, on: bool);
+    unsafe fn padstrng(&mut self, high: bool);
+
+    unsafe fn outcfg(&mut self, c: u8);
 }
 
 macro_rules! pin {
-    ($id:literal, $padreg:ident) => {
+    ($id:literal, $padreg:ident, $cfgreg: ident) => {
         paste! {
             pub type [<P $id>]<const MODE: Mode> = Pin<$id, MODE>;
 
             impl<const MODE: Mode>PinCfg for Pin<$id, MODE> {
-                fn padpull(&mut self, on: bool) {
-
+                unsafe fn padpull(&mut self, on: bool) {
                     // XXX: Pad 20 differs in behavior to the rest of the pads, see p. 420.
 
-                    gpio_cfg(|| unsafe {
-                        (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
-                            .write(|p| p.[< pad $id pull >]().bit(on))
-                    })
+                    (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
+                        .write(|p| p.[< pad $id pull >]().bit(on))
+                }
+
+                unsafe fn padinpen(&mut self, on: bool) {
+                    (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
+                        .write(|p| p.[< pad $id inpen >]().bit(on))
+                }
+
+                unsafe fn padstrng(&mut self, high: bool) {
+                    (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
+                        .write(|p| p.[< pad $id strng >]().bit(high))
+                }
+
+                unsafe fn padfncsel(&mut self, f: u8) {
+                    (*pac::GPIO::ptr()).[<padreg $padreg:lower>]
+                        .write(|p| p.[< pad $id fncsel >]().bits(f))
+                }
+
+                unsafe fn outcfg(&mut self, f: u8) {
+                    (*pac::GPIO::ptr()).[<cfg $cfgreg:lower>]
+                        .write(|p| p.[< gpio $id outcfg >]().bits(f))
                 }
             }
         }
@@ -92,34 +114,45 @@ impl<const P: usize> Pin<P, { Mode::Floating }> {
     }
 }
 
-impl<const P: usize, const M: Mode> Pin<P, M> {
+impl<const P: usize, const M: Mode> Pin<P, M>
+where
+    Pin<P, M>: PinCfg,
+{
     pub fn with_mode() -> Self {
-        let mut p = Self {};
-        p.mode::<M>();
-        p
+        Self {}.into_mode::<M>()
     }
 
     /// Configure the pin to a new mode.
-    fn mode<const NEWM: Mode>(&mut self) {
-        // Configure funcsel? Or should we have done that already?
+    pub fn into_mode<const NEWM: Mode>(mut self) -> Pin<P, NEWM> {
+        gpio_cfg(|| unsafe {
+            // TODO: Clear the three registers.
 
-        gpio_cfg(|| {
+            self.padfncsel(3); // 3 is GPIO-mode
+
+            // XXX: Pin 3, 37, 41 can have powersw configured.
+
             // padreg
+            match NEWM {
+                Mode::Floating | Mode::Input => {
+                    self.padinpen(true)
+                },
+                Mode::Output => {
+                    self.padinpen(false);
+                    self.outcfg(1); // push-pull
+                },
+            }
+        });
 
-            // cfgreg
-
-            // altpad
-        })
+        Pin {}
     }
 
     pub fn pin_num() -> usize {
         P
     }
 
-    // pub fn into_push_pull_output(self) -> Pin<P, { Mode::Output }> {
-    //     // TODO: Configure as output
-    //     Pin {}
-    // }
+    pub fn into_push_pull_output(self) -> Pin<P, { Mode::Output }> {
+        self.into_mode()
+    }
 }
 
 impl<const P: usize> Pin<P, { Mode::Output }>
@@ -128,10 +161,78 @@ where
 {
     /// Enable the internal pull up on the pin.
     pub fn internal_pull_up(&mut self, on: bool) {
-        self.padpull(on)
+        // XXX: See p. 420 for which pins support this. This should probably be in a
+        // trait that is only implemented for those pins.
+        gpio_cfg(|| unsafe { self.padpull(on) })
     }
 
-    pub fn set_drive_strength(&mut self, d: DriveStrength) {}
+    // pub fn set_drive_strength(&mut self, d: DriveStrength) {
+    // }
+}
+
+impl<const P: usize> OutputPin for Pin<P, { Mode::Output }>
+where
+    Pin<P, { Mode::Output }>: PinCfg,
+{
+    type Error = ();
+
+    fn set_low(&mut self) -> Result<(), ()> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wtca.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtcb.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            reg.write(mask)
+        });
+
+        Ok(())
+    }
+
+    fn set_high(&mut self) -> Result<(), ()> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wtsa.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtsb.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            reg.write(mask)
+        });
+
+        Ok(())
+    }
+}
+
+impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::Output }>
+where
+    Pin<P, { Mode::Output }>: PinCfg,
+{
+    type Error = ();
+
+    fn toggle(&mut self) -> Result<(), ()> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            *reg ^= mask;
+        });
+
+        Ok(())
+    }
 }
 
 pub struct Pins {
@@ -142,6 +243,9 @@ pub struct Pins {
 impl Pins {
     pub fn new(gpio: GPIO) -> Pins {
         // Takes ownership of GPIO.
+        //
+        // TODO: Reset all configuration registers?
+
         Pins {
             _gpio: gpio,
             d13: Pin::new(),
@@ -150,10 +254,10 @@ impl Pins {
 }
 
 // Declare all the pins
-pin!(4, B);
-pin!(5, B);
-pin!(6, B);
-pin!(7, B);
+// pin!(4, B);
+pin!(5, B, A);
+// pin!(6, B);
+// pin!(7, B);
 
 // #[cfg(test)]
 // mod tests {
