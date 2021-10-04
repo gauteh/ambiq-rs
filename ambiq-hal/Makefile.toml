@@ -1,0 +1,3 @@
+[tasks.compiletest]
+command = "cargo"
+args = ["test", "--tests", "--features", "tests"]

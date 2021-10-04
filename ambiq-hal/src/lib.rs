@@ -1,7 +1,9 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 #![feature(const_fn_trait_bound)]
-#![no_std]
+#![cfg_attr(not(test), no_std)]
+
+extern crate cortex_m;
 
 pub extern crate embedded_hal as hal;
 pub extern crate ambiq_apollo3_pac as pac;

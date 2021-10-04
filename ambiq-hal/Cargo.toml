@@ -8,10 +8,11 @@ edition = "2018"
 [dependencies]
 embedded-hal = { version = "0.2.6", features = [ "unproven" ] }
 cortex-m = "0.7.3"
-panic-halt = { version = "*", optional = true }
+panic-halt = { version = "*" }
 cortex-m-rt = { version = "*", optional = true }
 typenum = "1.14.0"
 paste = "1.0.5"
+compiletest_rs = { version = "0.7", optional = true }
 
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
@@ -23,5 +24,7 @@ path = "../pac/apollo3"
 [features]
 ambiq-sdk = [ "ambiq-hal-sys" ]
 sparkfun-redboard = [ "ambiq-hal-sys/sparkfun-redboard" ]
-examples = ["panic-halt", "cortex-m-rt"]
+examples = ["cortex-m-rt"]
+tests = ["examples", "compiletest_rs"]
+
 
