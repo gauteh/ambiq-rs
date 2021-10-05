@@ -38,9 +38,9 @@ fn main() {
     println!("cargo:lib=am_hal");
 
     // Entry-point
-    cc::Build::new()
-        .file("ambiq-sparkfun-sdk/boards_sfe/common/tools_sfe/templates/startup_gcc.c")
-        .compile("startup_gcc");
+    // cc::Build::new()
+    //     .file("ambiq-sparkfun-sdk/boards_sfe/common/tools_sfe/templates/startup_gcc.c")
+    //     .compile("startup_gcc");
 
     // Utils
     let mut compiler = cc::Build::new();

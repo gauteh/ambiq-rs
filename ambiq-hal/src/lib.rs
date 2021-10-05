@@ -8,6 +8,10 @@ extern crate cortex_m;
 pub extern crate embedded_hal as hal;
 pub extern crate ambiq_apollo3_pac as pac;
 
+
+#[cfg(feature = "ambiq-sdk")]
+pub extern crate ambiq_hal_sys as halc;
+
 pub mod clock;
 pub mod time;
 pub mod delay;
@@ -17,6 +21,9 @@ pub mod prelude {
     pub use hal::prelude::*;
 
     pub use hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
+
+    #[cfg(feature = "ambiq-sdk")]
+    pub use halc;
 }
 
 #[cfg(test)]
