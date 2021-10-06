@@ -19,6 +19,7 @@ optional = true
 
 [dependencies.ambiq-apollo3-pac]
 path = "../pac/apollo3"
+features = [ "rt" ]
 
 [features]
 ambiq-sdk = [ "ambiq-hal-sys" ]

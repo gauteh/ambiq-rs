@@ -238,7 +238,17 @@ where
 
 pub struct Pins {
     _gpio: GPIO,
+
+    /// * GPIO d13
+    /// * Blue LED
     pub d13: P5<{ Mode::Floating }>,
+
+    /// * USART0 TX (Serial-over-USB)
+    pub tx0: P48<{ Mode::Floating }>,
+
+    /// * USART0 RX (Serial-over-USB)
+    pub rx0: P49<{ Mode::Floating}>,
+
 }
 
 impl Pins {
@@ -249,7 +259,11 @@ impl Pins {
 
         Pins {
             _gpio: gpio,
+
             d13: Pin::new(),
+
+            tx0: Pin::new(),
+            rx0: Pin::new(),
         }
     }
 }
@@ -257,6 +271,8 @@ impl Pins {
 // Declare all the pins
 // pin!(4, B);
 pin!(5, B, A);
+pin!(48, M, G);
+pin!(49, M, G);
 // pin!(6, B);
 // pin!(7, B);
 

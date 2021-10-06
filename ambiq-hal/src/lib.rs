@@ -17,6 +17,9 @@ pub mod time;
 pub mod delay;
 pub mod gpio;
 
+#[cfg(feature = "ambiq-sdk")]
+pub mod uart;
+
 pub mod prelude {
     pub use hal::prelude::*;
 

@@ -17,6 +17,7 @@ version = "0.1.0"
 dependencies = [
  "bare-metal",
  "cortex-m",
+ "cortex-m-rt",
  "vcell",
 ]
 
