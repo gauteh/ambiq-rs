@@ -1,6 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 #![feature(const_fn_trait_bound)]
+#![feature(never_type)]
 #![cfg_attr(not(test), no_std)]
 
 extern crate cortex_m;

@@ -12,6 +12,8 @@ panic-halt = { version = "*", optional = true }
 cortex-m-rt = { version = "*", optional = true }
 typenum = "1.14.0"
 paste = "1.0.5"
+nb = "1.0.0"
+ufmt = "0.1.0"
 
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"

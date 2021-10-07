@@ -2,30 +2,7 @@ use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use core::convert::Infallible;
 use pac::GPIO;
 use paste::paste;
-
-// The GPIO_PADKEY register must be set to 0x73 before writing to the PADREGn registers,
-// and should be cleared (or set to another value) afterwards.
-const PAD_KEY: u32 = 0x73;
-
-pub(crate) fn gpio_cfg<F, R>(f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    cortex_m::interrupt::free(|_| {
-        // page 419
-        unsafe {
-            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(PAD_KEY));
-        }
-
-        let r = f();
-
-        unsafe {
-            (*pac::GPIO::ptr()).padkey.write(|w| w.bits(0x00));
-        }
-
-        r
-    })
-}
+use super::gpio_cfg;
 
 /// The drive strength is controlled by setting registers:
 /// ALTPADCFGy_PADn_DS1 and PADREGy_PADnSTRNG.
@@ -147,7 +124,7 @@ where
         Pin {}
     }
 
-    pub fn pin_num() -> usize {
+    pub fn pin_num(&self) -> usize {
         P
     }
 
