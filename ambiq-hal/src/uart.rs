@@ -1,6 +1,6 @@
 //! An UART implementation through the C-HAL.
 
-use crate::pac::{self, interrupt};
+use crate::pac;
 use crate::{gpio, gpio::pin::Mode};
 use crate::{halc, halc::c_types::*};
 use core::ptr;
@@ -85,10 +85,23 @@ impl Drop for Uart0 {
 }
 
 impl Read<u8> for Uart0 {
-    type Error = !;
+    type Error = ();
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        unimplemented!()
+        if self.uart.fr.read().rxfe().bit_is_set() {
+            Err(nb::Error::WouldBlock)
+        } else {
+            let dr = self.uart.dr.read();
+            if dr.oedata().is_err()
+                || dr.bedata().is_err()
+                || dr.pedata().is_err()
+                || dr.fedata().is_err()
+            {
+                Err(nb::Error::Other(()))
+            } else {
+                Ok(dr.data().bits())
+            }
+        }
     }
 }
 
@@ -122,7 +135,7 @@ impl ufmt::uWrite for Uart0 {
 
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
         for b in s.as_bytes().iter() {
-            nb::block!(self.write(*b));
+            nb::block!(self.write(*b))?;
         }
 
         Ok(())
