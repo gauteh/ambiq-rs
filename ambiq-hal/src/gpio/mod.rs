@@ -24,4 +24,4 @@ where
 
 pub mod pin;
 
-pub use pin::Pins;
+pub use pin::{Pins, Mode};

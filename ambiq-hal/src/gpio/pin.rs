@@ -1,8 +1,8 @@
+use super::gpio_cfg;
 use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use core::convert::Infallible;
 use pac::GPIO;
 use paste::paste;
-use super::gpio_cfg;
 
 /// The drive strength is controlled by setting registers:
 /// ALTPADCFGy_PADn_DS1 and PADREGy_PADnSTRNG.
@@ -85,7 +85,6 @@ macro_rules! pin {
     };
 }
 
-
 impl<const P: usize> Pin<P, { Mode::Floating }> {
     pub fn new() -> Self {
         Self {}
@@ -111,13 +110,11 @@ where
 
             // padreg
             match NEWM {
-                Mode::Floating | Mode::Input => {
-                    self.padinpen(true)
-                },
+                Mode::Floating | Mode::Input => self.padinpen(true),
                 Mode::Output => {
                     self.padinpen(false);
                     self.outcfg(1); // push-pull
-                },
+                }
             }
         });
 
@@ -164,9 +161,7 @@ where
             }
         };
 
-        gpio_cfg(|| unsafe {
-            reg.write(mask)
-        });
+        gpio_cfg(|| unsafe { reg.write(mask) });
 
         Ok(())
     }
@@ -181,9 +176,7 @@ where
             }
         };
 
-        gpio_cfg(|| unsafe {
-            reg.write(mask)
-        });
+        gpio_cfg(|| unsafe { reg.write(mask) });
 
         Ok(())
     }
@@ -224,8 +217,19 @@ pub struct Pins {
     pub tx0: P48<{ Mode::Floating }>,
 
     /// * USART0 RX (Serial-over-USB)
-    pub rx0: P49<{ Mode::Floating}>,
+    pub rx0: P49<{ Mode::Floating }>,
 
+    /// * QWIIC SDA
+    /// * SDA4
+    /// * MISO4
+    /// * RX1
+    pub d14: P40<{ Mode::Floating }>,
+
+    /// * QWIIC SCL
+    /// * SCL4
+    /// * SCK4
+    /// * TX1
+    pub d15: P39<{ Mode::Floating }>,
 }
 
 impl Pins {
@@ -238,6 +242,8 @@ impl Pins {
             _gpio: gpio,
 
             d13: Pin::new(),
+            d14: Pin::new(),
+            d15: Pin::new(),
 
             tx0: Pin::new(),
             rx0: Pin::new(),
@@ -246,12 +252,12 @@ impl Pins {
 }
 
 // Declare all the pins
-// pin!(4, B);
+// Pad number, Pad register, Cfg register
 pin!(5, B, A);
+pin!(39, J, E);
+pin!(40, K, F);
 pin!(48, M, G);
 pin!(49, M, G);
-// pin!(6, B);
-// pin!(7, B);
 
 // #[cfg(test)]
 // mod tests {

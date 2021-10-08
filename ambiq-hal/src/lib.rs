@@ -21,13 +21,18 @@ pub mod gpio;
 #[cfg(feature = "ambiq-sdk")]
 pub mod uart;
 
+#[cfg(feature = "ambiq-sdk")]
+pub mod i2c;
+
 pub mod prelude {
     pub use hal::prelude::*;
-
     pub use hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
 
     #[cfg(feature = "ambiq-sdk")]
     pub use halc;
+
+    #[cfg(feature = "ambiq-sdk")]
+    pub use halc::c_types::*;
 }
 
 #[cfg(test)]
