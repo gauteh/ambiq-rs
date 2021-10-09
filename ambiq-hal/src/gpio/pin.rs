@@ -242,6 +242,7 @@ impl Pins {
             _gpio: gpio,
 
             d13: Pin::new(),
+
             d14: Pin::new(),
             d15: Pin::new(),
 
