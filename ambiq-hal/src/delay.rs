@@ -89,6 +89,12 @@ impl DelayUs<u32> for Delay {
     }
 }
 
+pub fn busy_wait(cycles: u32) {
+    for _ in 0..cycles {
+        cortex_m::asm::nop()
+    }
+}
+
 impl DelayUs<u16> for Delay {
     fn delay_us(&mut self, us: u16) {
         self.delay_us(us as u32)

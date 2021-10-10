@@ -6,6 +6,7 @@ use crate::{halc, halc::c_types::*};
 use core::convert::TryInto;
 use core::ptr;
 use embedded_hal::blocking::i2c::*;
+use defmt::{error, warn, info, debug, trace};
 
 /// The QWIIC I2C controller.
 pub struct I2c {
@@ -59,17 +60,21 @@ impl I2c {
     }
 
     fn wait_transfer(&mut self) {
+        defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
-        loop {
+        for _ in 0..10_000_000 {
+        // loop {
             let status = self.iom.status.read();
 
             if status.idlest().is_idle() && !status.cmdact().is_active() {
-                break;
+                return;
             }
 
-            for _ in 0..1000 {} // TODO: delay 1 us
+            cortex_m::asm::nop();
         }
+
+        defmt::warn!("wait transfer: timed out!");
     }
 
     fn clear_interrupts(&mut self) {
@@ -85,7 +90,7 @@ impl I2c {
             // Disable IOM interrupts
             self.iom.inten.write(|i| i.bits(0));
 
-            // Disable DMA.. ?
+            // Disable DMA. We are doing direct writes with polling.
             self.iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
         }
 
@@ -100,10 +105,9 @@ impl I2c {
 
     fn set_addr(&mut self, addr: u16, dir: I2cDirection) {
         // p. 310
-        let addr = match dir {
-            I2cDirection::Write => addr & 0xfe,
-            I2cDirection::Read => addr | 0x01,
-        };
+        // let addr = (addr << 1) | dir as u16;
+        // let addr = addr | dir as u16;
+        // XXX: probably have to write to entire DEVCFG if want to set read bit.
 
         unsafe {
             self.iom.devcfg.write(|d| d.devaddr().bits(addr));
@@ -114,29 +118,39 @@ impl I2c {
     fn start_tx(&mut self, len: u16, dir: I2cDirection) {
         use ambiq_apollo3_pac::iom0::cmd::CMD_A;
 
+        trace!("start tx (len={}) (dir={})", &len, dir);
+
         unsafe {
             // Build CMD
             self.iom.cmd.write(|cmd| {
-                cmd.cmdsel().bits(0) // only for SPI CS
-                    .tsize().bits(len)
-                    .cmd().variant(match dir {
+                cmd.cmdsel()
+                    .bits(0) // only for SPI CS
+                    .tsize()
+                    .bits(len)
+                    .cmd()
+                    .variant(match dir {
                         I2cDirection::Write => CMD_A::WRITE,
-                        I2cDirection::Read => CMD_A::READ
+                        I2cDirection::Read => CMD_A::READ,
                     })
-                    .cont().clear_bit()
-                    .offsetlo().bits(0)
-                    .offsetcnt().bits(0)
+                    .cont()
+                    .clear_bit()
+                    .offsetlo()
+                    .bits(0)
+                    .offsetcnt()
+                    .bits(0)
             });
         }
     }
 
     fn reset_on_error(&mut self, e: &I2cError) {
         use I2cError::*;
+        defmt::debug!("i2c: reset_on_error");
 
         let inten = self.disable_interrupts();
 
         match e {
             NAK => {
+                defmt::debug!("i2c: reset: NAK");
                 self.wait_transfer();
 
                 // disable the submodule
@@ -145,19 +159,39 @@ impl I2c {
                 // reset FIFO
                 self.iom.fifoctrl.modify(|_r, w| w.fiforstn().clear_bit());
 
+                defmt::trace!("i2c: reset: waiting for submodule");
                 // delay for "> 6 clocks"?
-                for _ in 0..1000000 {}
+                for _ in 0..10_000_000 {
+                    cortex_m::asm::nop();
+                }
+                defmt::trace!("i2c: reset: waiting for submodule: done");
 
                 self.iom.fifoctrl.modify(|_r, w| w.fiforstn().set_bit());
                 self.iom.submodctrl.modify(|_r, w| w.smod1en().set_bit());
-
-            },
-            _ => ()
+            }
+            _ => (),
         }
 
         self.clear_interrupts();
         self.enable_interrupts(inten);
+    }
 
+    fn push_fifo(&mut self, word: &[u8]) {
+        let word = if word.len() == 4 {
+            u32::from_ne_bytes(word.try_into().unwrap())
+        } else {
+            // pad to full word.
+            let mut fullword = [0u8; 4];
+            for (b, w) in word.iter().zip(fullword.iter_mut()) {
+                *w = *b;
+            }
+
+            u32::from_ne_bytes(fullword)
+        };
+
+        unsafe {
+            self.iom.fifopush.write(|f| f.bits(word));
+        }
     }
 }
 
@@ -170,12 +204,13 @@ impl Drop for I2c {
     }
 }
 
+#[derive(defmt::Format)]
 enum I2cDirection {
     Write,
     Read = 1,
 }
 
-#[derive(ufmt::derive::uDebug, Copy, Clone)]
+#[derive(ufmt::derive::uDebug, Copy, Clone, defmt::Format)]
 pub enum I2cError {
     /// This indicates an error outside of our control, no such device, etc.
     WriteHwError,
@@ -199,50 +234,43 @@ impl Write<SevenBitAddress> for I2c {
     type Error = I2cError;
 
     fn write(&mut self, addr: u8, output: &[u8]) -> Result<(), Self::Error> {
-        // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16)
+        // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16), or 255 bytes?
 
         self.wait_transfer();
+
         let inten = self.disable_interrupts();
         self.clear_interrupts();
 
         self.set_addr(addr.into(), I2cDirection::Write);
 
-        let mut tx_started = false;
+        let words = output.chunks(4);
 
-        // Push bytes through FIFO
-        for word in output.chunks(4) {
-            let word = if word.len() == 4 {
-                u32::from_ne_bytes(word.try_into().unwrap())
-            } else {
-                // pad to full word. hopefully the IOM doesn't transfer any more bytes
-                // than those specifed in the CMD anyway.
-                let mut fullword = [0u8; 4];
-                for (b, w) in word.iter().zip(fullword.iter_mut()) {
-                    *w = *b;
-                }
-
-                u32::from_ne_bytes(fullword)
-            };
-
-            while tx_started && !self.iom.intstat.read().cmdcmp().bit()
-                && self.iom.fifoptr.read().fifo0rem().bits() < 4u8
-            {
-                for _ in 0..1000 {} // TODO: delay 1 us
+        // Fill up FIFO before sending command.
+        for word in words {
+            if self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+                break;
             }
 
-            unsafe {
-                self.iom.fifopush.write(|f| f.bits(word));
-            }
-
-            if !tx_started {
-                self.start_tx(output.len() as u16, I2cDirection::Write);
-                tx_started = true;
-            }
+            self.push_fifo(word);
         }
 
-        // zero-length command
-        if !tx_started {
-            self.start_tx(output.len() as u16, I2cDirection::Write);
+        // Send command to start transmitting.
+        self.start_tx(output.len() as u16, I2cDirection::Write);
+
+        // Push rest of bytes through FIFO
+        'outer: for word in output.chunks(4) {
+            // Wait for FIFO to clear.
+            while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+                cortex_m::asm::nop();
+
+                if self.iom.intstat.read().cmdcmp().bit() {
+                    // Command completed without emptying FIFO, not good.
+                    break 'outer;
+                }
+            }
+
+            // Fill FIFO while there is space
+            self.push_fifo(word);
         }
 
         self.wait_transfer();
