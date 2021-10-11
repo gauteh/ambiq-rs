@@ -6,6 +6,7 @@ use crate::{halc, halc::c_types::*};
 use core::convert::TryInto;
 use core::ptr;
 use embedded_hal::blocking::i2c::*;
+#[allow(unused_imports)]
 use defmt::{error, warn, info, debug, trace};
 
 /// The QWIIC I2C controller.
@@ -59,7 +60,7 @@ impl I2c {
         }
     }
 
-    fn wait_transfer(&mut self) {
+    fn wait_transfer(&mut self) -> Result<(), I2cError> {
         defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
@@ -68,13 +69,14 @@ impl I2c {
             let status = self.iom.status.read();
 
             if status.idlest().is_idle() && !status.cmdact().is_active() {
-                return;
+                return Ok(());
             }
 
             cortex_m::asm::nop();
         }
 
         defmt::warn!("wait transfer: timed out!");
+        Err(I2cError::Timeout)
     }
 
     fn clear_interrupts(&mut self) {
@@ -103,15 +105,11 @@ impl I2c {
         }
     }
 
-    fn set_addr(&mut self, addr: u16, dir: I2cDirection) {
+    fn set_addr(&mut self, addr: u16) {
         // p. 310
-        // let addr = (addr << 1) | dir as u16;
-        // let addr = addr | dir as u16;
-        // XXX: probably have to write to entire DEVCFG if want to set read bit.
 
         unsafe {
             self.iom.devcfg.write(|d| d.devaddr().bits(addr));
-            // self.iom.devcfg.write(|d| d.bits(addr as u32));
             self.iom.dcx.write(|d| d.bits(0));
         }
     }
@@ -143,12 +141,14 @@ impl I2c {
         }
     }
 
-    fn reset_on_error(&mut self, _e: &I2cError) {
-        defmt::debug!("i2c: reset_on_error");
+    /// Resets the I2C module and clears FIFOs.
+    pub fn reset(&mut self) {
+        defmt::trace!("i2c: reset");
 
         let inten = self.disable_interrupts();
 
-        self.wait_transfer();
+        self.wait_transfer().ok(); // XXX: Ignoring this, maybe better to reset the module if it
+                                   // doesn't work?.
 
         // disable the submodule
         self.iom.submodctrl.modify(|_r, w| w.smod1en().clear_bit());
@@ -221,6 +221,9 @@ pub enum I2cError {
     /// driver.
     SwError,
 
+    /// Have to read more than zero bytes.
+    ReadTooFew,
+
     Timeout,
 }
 
@@ -231,12 +234,12 @@ impl Write<SevenBitAddress> for I2c {
         // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16), or 255 bytes?
         trace!("i2c: writing: addr = 0x{:02x}, len = {}", addr, output.len());
 
-        self.wait_transfer();
+        self.wait_transfer().ok();
 
         let inten = self.disable_interrupts();
         self.clear_interrupts();
 
-        self.set_addr(addr.into(), I2cDirection::Write);
+        self.set_addr(addr.into());
 
         let words = output.chunks(4);
 
@@ -268,7 +271,7 @@ impl Write<SevenBitAddress> for I2c {
             self.push_fifo(word);
         }
 
-        self.wait_transfer();
+        self.wait_transfer().ok();
 
         // Check for errors
         let r = match self.iom.intstat.read() {
@@ -281,8 +284,8 @@ impl Write<SevenBitAddress> for I2c {
             _ => Ok(()),
         };
 
-        if let Err(e) = r {
-            self.reset_on_error(&e);
+        if r.is_err() {
+            self.reset();
         }
 
         self.clear_interrupts();
@@ -298,12 +301,16 @@ impl Read<SevenBitAddress> for I2c {
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
         trace!("i2c: reading: addr = 0x{:02x}, len = {}", address, buffer.len());
 
-        self.wait_transfer();
+        if buffer.len() == 0 {
+            return Err(I2cError::ReadTooFew);
+        }
+
+        self.wait_transfer().ok();
 
         let inten = self.disable_interrupts();
         self.clear_interrupts();
 
-        self.set_addr(address.into(), I2cDirection::Read);
+        self.set_addr(address.into());
 
         self.start_tx(buffer.len() as u16, I2cDirection::Read);
 
@@ -325,7 +332,7 @@ impl Read<SevenBitAddress> for I2c {
             }
         }
 
-        self.wait_transfer();
+        self.wait_transfer().ok();
 
         // Check for errors
         let r = match self.iom.intstat.read() {
@@ -338,8 +345,8 @@ impl Read<SevenBitAddress> for I2c {
             _ => Ok(()),
         };
 
-        if let Err(e) = r {
-            self.reset_on_error(&e);
+        if r.is_err() {
+            self.reset();
         }
 
         self.clear_interrupts();
