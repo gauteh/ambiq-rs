@@ -111,6 +111,7 @@ impl I2c {
 
         unsafe {
             self.iom.devcfg.write(|d| d.devaddr().bits(addr));
+            // self.iom.devcfg.write(|d| d.bits(addr as u32));
             self.iom.dcx.write(|d| d.bits(0));
         }
     }
@@ -142,35 +143,28 @@ impl I2c {
         }
     }
 
-    fn reset_on_error(&mut self, e: &I2cError) {
-        use I2cError::*;
+    fn reset_on_error(&mut self, _e: &I2cError) {
         defmt::debug!("i2c: reset_on_error");
 
         let inten = self.disable_interrupts();
 
-        match e {
-            NAK => {
-                defmt::debug!("i2c: reset: NAK");
-                self.wait_transfer();
+        self.wait_transfer();
 
-                // disable the submodule
-                self.iom.submodctrl.modify(|_r, w| w.smod1en().clear_bit());
+        // disable the submodule
+        self.iom.submodctrl.modify(|_r, w| w.smod1en().clear_bit());
 
-                // reset FIFO
-                self.iom.fifoctrl.modify(|_r, w| w.fiforstn().clear_bit());
+        // reset FIFO
+        self.iom.fifoctrl.modify(|_r, w| w.fiforstn().clear_bit());
 
-                defmt::trace!("i2c: reset: waiting for submodule");
-                // delay for "> 6 clocks"?
-                for _ in 0..10_000_000 {
-                    cortex_m::asm::nop();
-                }
-                defmt::trace!("i2c: reset: waiting for submodule: done");
-
-                self.iom.fifoctrl.modify(|_r, w| w.fiforstn().set_bit());
-                self.iom.submodctrl.modify(|_r, w| w.smod1en().set_bit());
-            }
-            _ => (),
+        defmt::trace!("i2c: reset: waiting for submodule");
+        // delay for "> 6 clocks"?
+        for _ in 0..10_000_000 {
+            cortex_m::asm::nop();
         }
+        defmt::trace!("i2c: reset: waiting for submodule: done");
+
+        self.iom.fifoctrl.modify(|_r, w| w.fiforstn().set_bit());
+        self.iom.submodctrl.modify(|_r, w| w.smod1en().set_bit());
 
         self.clear_interrupts();
         self.enable_interrupts(inten);
@@ -206,8 +200,8 @@ impl Drop for I2c {
 
 #[derive(defmt::Format)]
 enum I2cDirection {
-    Write,
-    Read = 1,
+    Write = 0x00,
+    Read = 0x01,
 }
 
 #[derive(ufmt::derive::uDebug, Copy, Clone, defmt::Format)]
@@ -303,7 +297,9 @@ impl Read<SevenBitAddress> for I2c {
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
         trace!("i2c: reading: addr = 0x{:02x}, len = {}", address, buffer.len());
+
         self.wait_transfer();
+
         let inten = self.disable_interrupts();
         self.clear_interrupts();
 
@@ -311,12 +307,15 @@ impl Read<SevenBitAddress> for I2c {
 
         self.start_tx(buffer.len() as u16, I2cDirection::Read);
 
-        for b in buffer.chunks_mut(4) {
+        'outer: for b in buffer.chunks_mut(4) {
             // Wait for FIFO to fill up and commands to complete.
-            while !self.iom.intstat.read().cmdcmp().bit()
-                && self.iom.fifoptr.read().fifo1siz().bits() < 4u8
+            while self.iom.fifoptr.read().fifo1siz().bits() < 4
             {
-                for _ in 0..1000 {}
+                cortex_m::asm::nop();
+
+                if self.iom.intstat.read().cmdcmp().bit() {
+                    break 'outer;
+                }
             }
 
             // Read a word
