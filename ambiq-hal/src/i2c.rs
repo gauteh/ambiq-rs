@@ -235,6 +235,7 @@ impl Write<SevenBitAddress> for I2c {
 
     fn write(&mut self, addr: u8, output: &[u8]) -> Result<(), Self::Error> {
         // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16), or 255 bytes?
+        trace!("i2c: writing: addr = 0x{:02x}, len = {}", addr, output.len());
 
         self.wait_transfer();
 
@@ -298,14 +299,16 @@ impl Write<SevenBitAddress> for I2c {
 }
 
 impl Read<SevenBitAddress> for I2c {
-    type Error = !;
+    type Error = I2cError;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
+        trace!("i2c: reading: addr = 0x{:02x}, len = {}", address, buffer.len());
         self.wait_transfer();
         let inten = self.disable_interrupts();
         self.clear_interrupts();
 
         self.set_addr(address.into(), I2cDirection::Read);
+
         self.start_tx(buffer.len() as u16, I2cDirection::Read);
 
         for b in buffer.chunks_mut(4) {
@@ -325,9 +328,24 @@ impl Read<SevenBitAddress> for I2c {
 
         self.wait_transfer();
 
+        // Check for errors
+        let r = match self.iom.intstat.read() {
+            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
+                Err(I2cError::SwError)
+            }
+            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(I2cError::ARB),
+            i if i.nak().bit() => Err(I2cError::NAK),
+            i if i.cqerr().bit() || i.derr().bit() => Err(I2cError::Other),
+            _ => Ok(()),
+        };
+
+        if let Err(e) = r {
+            self.reset_on_error(&e);
+        }
+
         self.clear_interrupts();
         self.enable_interrupts(inten);
 
-        Ok(())
+        r
     }
 }
