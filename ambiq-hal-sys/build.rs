@@ -44,6 +44,7 @@ fn main() {
 
     // Utils
     let mut compiler = cc::Build::new();
+    compiler.warnings(false);
     compiler.include("ambiq-sparkfun-sdk/mcu/apollo3");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");
