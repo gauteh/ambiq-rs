@@ -37,14 +37,16 @@ fn main() {
     println!("cargo:lib=am_bsp");
     println!("cargo:lib=am_hal");
 
-    // Entry-point
+    // Entry-point: TODO: Make feature gated! then you don't need cortex_m::entry, but need a much
+    // more complicated linker script for interrupt functions etc.
+    //
     // cc::Build::new()
     //     .file("ambiq-sparkfun-sdk/boards_sfe/common/tools_sfe/templates/startup_gcc.c")
     //     .compile("startup_gcc");
 
     // Utils
     let mut compiler = cc::Build::new();
-    compiler.warnings(false);
+    compiler.warnings(false); // not my problem.
     compiler.include("ambiq-sparkfun-sdk/mcu/apollo3");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");

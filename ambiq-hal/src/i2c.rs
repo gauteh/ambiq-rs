@@ -187,6 +187,11 @@ impl I2c {
             self.iom.fifopush.write(|f| f.bits(word));
         }
     }
+
+    /// Pings the address by performing a zero-byte write.
+    pub fn ping(&mut self, addr: u8) -> bool {
+        self.write(addr, &[]).is_ok()
+    }
 }
 
 impl Drop for I2c {
