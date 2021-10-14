@@ -69,6 +69,7 @@ impl I2c {
             let status = self.iom.status.read();
 
             if status.idlest().is_idle() && !status.cmdact().is_active() {
+                defmt::trace!("wait transfer: transfer done.");
                 return Ok(());
             }
 
@@ -183,6 +184,8 @@ impl I2c {
             u32::from_ne_bytes(fullword)
         };
 
+        trace!("i2c: push_fifo: {:}", word.to_ne_bytes());
+
         unsafe {
             self.iom.fifopush.write(|f| f.bits(word));
         }
@@ -246,10 +249,10 @@ impl Write<SevenBitAddress> for I2c {
 
         self.set_addr(addr.into());
 
-        let words = output.chunks(4);
+        let mut words = output.chunks(4);
 
         // Fill up FIFO before sending command.
-        for word in words {
+        while let Some(word) = words.next() {
             if self.iom.fifoptr.read().fifo0rem().bits() < 4 {
                 break;
             }
@@ -261,7 +264,7 @@ impl Write<SevenBitAddress> for I2c {
         self.start_tx(output.len() as u16, I2cDirection::Write);
 
         // Push rest of bytes through FIFO
-        'outer: for word in output.chunks(4) {
+        'outer: for word in words {
             // Wait for FIFO to clear.
             while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
                 cortex_m::asm::nop();
@@ -290,6 +293,7 @@ impl Write<SevenBitAddress> for I2c {
         };
 
         if r.is_err() {
+            error!("i2c: write: error: {:?}", r);
             self.reset();
         }
 
