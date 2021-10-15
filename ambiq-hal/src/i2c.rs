@@ -323,14 +323,14 @@ impl Read<SevenBitAddress> for I2c {
 
         self.start_tx(buffer.len() as u16, I2cDirection::Read);
 
-        'outer: for b in buffer.chunks_mut(4) {
+        for b in buffer.chunks_mut(4) {
             // Wait for FIFO to fill up and commands to complete.
             while self.iom.fifoptr.read().fifo1siz().bits() < 4
             {
                 cortex_m::asm::nop();
 
                 if self.iom.intstat.read().cmdcmp().bit() {
-                    break 'outer;
+                    break;
                 }
             }
 
