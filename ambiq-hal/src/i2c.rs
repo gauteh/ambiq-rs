@@ -184,8 +184,6 @@ impl I2c {
             u32::from_ne_bytes(fullword)
         };
 
-        trace!("i2c: push_fifo: {:}", word.to_ne_bytes());
-
         unsafe {
             self.iom.fifopush.write(|f| f.bits(word));
         }
