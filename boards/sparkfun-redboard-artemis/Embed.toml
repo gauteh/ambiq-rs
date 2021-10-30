@@ -1,0 +1,6 @@
+[default.probe]
+protocol = "Swd"
+
+[default.general]
+log_level = "DEBUG"
+chip = "AMA3B1KK-KBR"
