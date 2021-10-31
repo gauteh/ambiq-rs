@@ -2,5 +2,21 @@
 protocol = "Swd"
 
 [default.general]
-log_level = "DEBUG"
+log_level = "WARN"
 chip = "AMA3B1KK-KBR"
+
+[default.flashing]
+enabled = false
+
+[default.reset]
+enabled = false
+
+[default.rtt]
+enabled = true
+channels = [
+  { up = 0, down = 0, name = "name", format = "String" },
+]
+
+[default.gdb]
+enabled = false
+gdb_connection_string = "127.0.0.1:1337"

@@ -1,3 +1,5 @@
+//! To receive RTT output using JLink
+
 #![no_std]
 #![no_main]
 
@@ -8,14 +10,16 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
                      // use panic_itm as _; // logs messages over ITM; requires ITM support
                      // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
-use cortex_m::asm;
 use cortex_m_rt::entry;
 
 use ambiq_hal as hal;
 use hal::prelude::*;
 
+use rtt_target::{rtt_init_print, rprintln};
+
 #[entry]
 fn main() -> ! {
+    rtt_init_print!();
     let mut peripherals = hal::pac::Peripherals::take().unwrap();
     let core = hal::pac::CorePeripherals::take().unwrap();
 
@@ -27,5 +31,7 @@ fn main() -> ! {
     loop {
         led.toggle().unwrap();
         delay.delay_ms(100u32);
+        rprintln!("Hello, world!");
     }
 }
+

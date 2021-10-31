@@ -12,3 +12,6 @@ cortex-m = "0.7.3"
 
 [dependencies.ambiq-hal]
 path = "../../ambiq-hal"
+
+[dev-dependencies]
+rtt-target = { version = "*", features = [ "cortex-m" ] }
