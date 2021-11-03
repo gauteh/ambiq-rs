@@ -15,4 +15,5 @@ glob = "*"
 
 [features]
 sparkfun-redboard = []
+sparkfun-redboard-nano = []
 default = [ "sparkfun-redboard" ]

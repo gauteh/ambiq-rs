@@ -6,18 +6,30 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn main() {
-    // Build the Board Support Crate for the desired chip. We're starting out with
-    // "Sparkfun Redboard Artemis".
-    //
-    // TODO: Choose the correct board depending on feature flag.
-    println!("Building the Sparkfun BSP");
+enum Board {
+    SfRedboard,
+    SfRedboardNano,
+}
 
-    env::var_os("CARGO_FEATURE_SPARKFUN_REDBOARD")
-        .expect("Only the Sparkfun Artemis Redboard is supported");
+fn main() {
+    // Build the Board Support Crate for the desired chip.
+    println!("Building the Ambiq SDK and Sparkfun BSP");
+
+    let board = if env::var_os("CARGO_FEATURE_SPARKFUN_REDBOARD").is_some() {
+        Board::SfRedboard
+    } else if env::var_os("CARGO_FEATURE_SPARKFUN_REDBOARD_NANO").is_some() {
+        Board::SfRedboardNano
+    } else {
+        panic!("No board selected.");
+    };
+
+    let board_dir = match board {
+        Board::SfRedboard => "ambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp",
+        Board::SfRedboardNano => "ambiq-sparkfun-sdk/boards_sfe/redboard_artemis_nano/bsp"
+    };
 
     Command::new("make")
-        .current_dir("ambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp/gcc")
+        .current_dir(&format!("{}/gcc", board_dir))
         .status()
         .expect("could not re-build the BSP library");
 
@@ -30,9 +42,7 @@ fn main() {
     // apollo3 MCU functions (modulo the current chip + MCU).
     println!("cargo:rustc-link-lib=static=am_bsp");
     println!("cargo:rustc-link-lib=static=am_hal");
-    println!(
-        "cargo:rustc-link-search=native=ambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp/gcc/bin"
-    );
+    println!( "cargo:rustc-link-search=native={}/gcc/bin", board_dir);
     println!("cargo:rustc-link-search=native=ambiq-sparkfun-sdk/mcu/apollo3/hal/gcc/bin");
     println!("cargo:lib=am_bsp");
     println!("cargo:lib=am_hal");
@@ -66,7 +76,7 @@ fn main() {
     compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");
     compiler.include("ambiq-sparkfun-sdk/devices");
-    compiler.include("ambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp");
+    compiler.include(board_dir);
 
     let paths = &[
         "am_devices_button.c",
@@ -86,7 +96,7 @@ fn main() {
         .header("wrapper.h")
         .use_core()
         .ctypes_prefix("c_types")
-        .clang_arg("-Iambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp")
+        .clang_arg(&format!("-I{}", board_dir))
         .clang_arg("-Iambiq-sparkfun-sdk/mcu/apollo3")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/ARM/Include")
