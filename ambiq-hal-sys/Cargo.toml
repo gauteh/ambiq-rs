@@ -1,7 +1,10 @@
 [package]
 name = "ambiq-hal-sys"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
+description = "Bindings to the Ambiq SDK"
+license-file = "AM-BSD-EULA.txt"
+repository = "https://github.com/gauteh/ambiq-rs"
 
 [dependencies]
 
