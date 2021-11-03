@@ -2,6 +2,8 @@
 name = "ambiq-hal"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+repository = "https://github.com/gauteh/ambiq-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,9 +21,11 @@ defmt = "0.2.3"
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
 optional = true
+version = "0.1"
 
 [dependencies.ambiq-apollo3-pac]
 path = "../pac/apollo3"
+version = "0.1.0"
 features = [ "rt" ]
 
 [features]
