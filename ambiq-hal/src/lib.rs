@@ -14,6 +14,7 @@ pub extern crate ambiq_apollo3_pac as pac;
 pub extern crate ambiq_hal_sys as halc;
 
 pub mod clock;
+pub mod rtc;
 pub mod time;
 pub mod delay;
 pub mod gpio;
