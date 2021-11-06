@@ -1,0 +1,17 @@
+[package]
+name = "redboard-nano"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+panic-halt = "0.2.0"
+cortex-m-rt = "0.7.0"
+cortex-m = "0.7.3"
+
+[dependencies.ambiq-hal]
+path = "../../ambiq-hal"
+
+[dev-dependencies]
+rtt-target = { version = "*", features = [ "cortex-m" ] }
