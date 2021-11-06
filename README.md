@@ -1,12 +1,18 @@
 # Ambiq-rs: HAL for Ambiq Apollo
 
-# Usage
+This project consists of two main crates:
 
-1) `$ git submodule update --init --recursive --depth 1`
+1.) [**ambig-hal-sys**](ambiq-hal-sys/) is bindings to the Ambiq Suite SDK as modified by Sparkfun.
+2.) **ambig-hal** is a `embedded-hal` based Hardware Abstraction Layer (HAL) for
+the Ambiq Apollo.
+
+Eventually the board support crates will make it easier to determine which pins
+(as labelled on the board) match the pads and peripherals on the Apollo MCU.
 
 ## Boards
 
-* [Sparkfun Redboard Artemis](https://www.sparkfun.com/products/15444) - [boards/sparkfun-redboard-artemis](boards/sparkfun-redboard-artemis)
+* [Sparkfun Redboard Artemis](https://www.sparkfun.com/products/15444) - [boards/redboard](boards/redboard) | [boards/redboard-halc](boards/redboard-halc)
+* [Sparkfun Redboard Artemis Nano](https://www.sparkfun.com/products/15443) - [boards/redboard-nano](boards/redboard-nano)
 
 ## MCU
 
