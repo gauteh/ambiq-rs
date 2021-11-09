@@ -2,8 +2,9 @@
 
 This project consists of two main crates:
 
-1.) [**ambig-hal-sys**](ambiq-hal-sys/) is bindings to the Ambiq Suite SDK as modified by Sparkfun.
-2.) **ambig-hal** is a `embedded-hal` based Hardware Abstraction Layer (HAL) for
+1.) [**ambiq-hal-sys**](ambiq-hal-sys/) is bindings to the Ambiq Suite SDK as modified by Sparkfun.
+
+2.) **ambiq-hal** is a `embedded-hal` based Hardware Abstraction Layer (HAL) for
 the Ambiq Apollo.
 
 Eventually the board support crates will make it easier to determine which pins
