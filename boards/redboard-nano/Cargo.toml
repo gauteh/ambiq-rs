@@ -7,11 +7,13 @@ edition = "2021"
 
 [dependencies]
 panic-halt = "0.2.0"
-cortex-m-rt = "0.7.0"
+cortex-m-rt = { version = "0.7.0", features = []}
 cortex-m = "0.7.3"
 
 [dependencies.ambiq-hal]
 path = "../../ambiq-hal"
+features = [ "ambiq-sdk", "sparkfun-redboard-nano" ]
 
 [dev-dependencies]
 rtt-target = { version = "*", features = [ "cortex-m" ] }
+ufmt = "*"
