@@ -34,7 +34,7 @@ fn main() -> ! {
     let mut rtc = hal::rtc::Rtc::new(dp.RTC, &mut dp.CLKGEN);
     rtc.enable();
 
-    let mut timestamp = 0;
+    let mut timestamp = rtc.now().timestamp_millis();
     loop {
         led.toggle().unwrap();
         delay.delay_ms(2000u32);
