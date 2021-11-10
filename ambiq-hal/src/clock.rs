@@ -44,7 +44,7 @@ impl<'a> ClockCtrl<'a> {
     }
 
     pub fn rtc_use_xt(&mut self) {
-        self.clkgen.octrl.modify(|_, w| w.osel().rtc_xt());
+        self.clkgen.octrl.write(|w| w.stopxt().en().osel().rtc_xt());
     }
 
     pub fn rtc_use_lfrc(&mut self) {

@@ -18,7 +18,12 @@ impl Rtc {
     pub fn new(rtc: RTC, clkgen: &mut CLKGEN) -> Rtc {
         // Enable XT for RTC
         let mut clk = ClockCtrl::new(clkgen);
-        clk.enable_xt();
+        // clk.enable_xt();
+        rtc.rtcctl.reset();
+        rtc.almup.reset();
+        rtc.almlow.reset();
+        rtc.inten.write(|w| w.alm().clear_bit());
+        rtc.intclr.write(|w| w.alm().set_bit());
 
         // Select XT as source
         clk.rtc_use_xt();
@@ -94,14 +99,21 @@ impl Rtc {
 
     pub fn enable_alarm(&mut self) {
         self.clear_interrupts();
-        self.rtc.inten.write(|w| w.alm().set_bit());
-        unsafe {
-            pac::NVIC::unmask(pac::Interrupt::RTC);
-        }
+
+        cortex_m::interrupt::free(|_| {
+            self.rtc.inten.write(|w| w.alm().set_bit());
+            unsafe {
+                pac::NVIC::unmask(pac::Interrupt::RTC);
+            }
+        });
     }
 
     pub fn disable_alarm(&mut self) {
         self.rtc.inten.write(|w| w.alm().clear_bit());
+        unsafe {
+            pac::NVIC::mask(pac::Interrupt::RTC);
+        }
+        self.clear_interrupts();
     }
 }
 

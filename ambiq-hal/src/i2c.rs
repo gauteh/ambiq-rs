@@ -52,6 +52,9 @@ impl I2c {
             halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
         }
 
+        // Disable DMA. We are doing direct writes / reads with busy polling.
+        iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
+
         I2c {
             phiom,
             iom,
@@ -92,9 +95,6 @@ impl I2c {
         unsafe {
             // Disable IOM interrupts
             self.iom.inten.write(|i| i.bits(0));
-
-            // Disable DMA. We are doing direct writes with polling.
-            self.iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
         }
 
         inten

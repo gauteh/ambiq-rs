@@ -35,6 +35,7 @@ pub enum Mode {
     Floating,
     Input,
     Output,
+    AF0
 }
 
 pub struct Pin<const PINNUM: usize, const MODE: Mode> {}
@@ -114,6 +115,10 @@ where
                 Mode::Output => {
                     self.padinpen(false);
                     self.outcfg(1); // push-pull
+                },
+                Mode::AF0 => {
+                    self.padfncsel(0);
+                    self.padinpen(false);
                 }
             }
         });
@@ -140,9 +145,21 @@ where
         // trait that is only implemented for those pins.
         gpio_cfg(|| unsafe { self.padpull(on) })
     }
+}
 
-    // pub fn set_drive_strength(&mut self, d: DriveStrength) {
-    // }
+impl<const P: usize> Pin<P, { Mode::AF0 }>
+where
+    Pin<P, { Mode::AF0 }>: PinCfg,
+{
+    pub fn set_drive_strength(&mut self, d: DriveStrength) {
+        gpio_cfg(|| unsafe {
+            match d {
+                DriveStrength::D2mA => self.padstrng(false),
+                DriveStrength::D4mA => self.padstrng(true),
+                _ => () // XXX: is configured in altpadcfg
+            }
+        });
+    }
 }
 
 impl<const P: usize> OutputPin for Pin<P, { Mode::Output }>

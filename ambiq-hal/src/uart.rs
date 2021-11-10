@@ -18,6 +18,9 @@ pub struct Uart0 {
     rx: gpio::pin::P49<{ Mode::Floating }>,
 }
 
+unsafe impl Sync for Uart0 {}
+unsafe impl Send for Uart0 {}
+
 impl Uart0 {
     pub fn new(
         uart: pac::UART0,

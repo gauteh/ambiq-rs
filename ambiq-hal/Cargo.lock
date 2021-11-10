@@ -29,12 +29,10 @@ dependencies = [
  "ambiq-hal-sys",
  "chrono",
  "cortex-m",
- "cortex-m-rt",
  "defmt",
  "embedded-hal",
  "embedded-time",
  "nb 1.0.0",
- "panic-halt",
  "paste",
  "typenum",
  "ufmt",
@@ -439,12 +437,6 @@ checksum = "9a64b1ec5cda2586e284722486d802acf1f7dbdc623e2bfc57e65ca1cd099290"
 dependencies = [
  "autocfg",
 ]
-
-[[package]]
-name = "panic-halt"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
 
 [[package]]
 name = "paste"
