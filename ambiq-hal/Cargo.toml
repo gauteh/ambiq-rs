@@ -10,9 +10,7 @@ repository = "https://github.com/gauteh/ambiq-rs"
 [dependencies]
 embedded-hal = { version = "0.2.6", features = [ "unproven" ] }
 cortex-m = "0.7.3"
-# panic-halt = { version = "*", optional = true }
-# cortex-m-rt = { version = "*", optional = true }
-typenum = "1.14.0"
+cortex-m-rt = { version = "*", optional = true }
 paste = "1.0.5"
 nb = "1.0.0"
 ufmt = "0.1.0"
@@ -42,4 +40,4 @@ sparkfun-redboard = [ "ambiq-hal-sys?/sparkfun-redboard" ]
 sparkfun-redboard-nano = [ "ambiq-hal-sys?/sparkfun-redboard-nano" ]
 # examples = ["panic-halt", "cortex-m-rt"]
 default = [ "defmt-default" ]
-rt = [ "ambiq-apollo3-pac/rt" ]
+rt = [ "cortex-m-rt", "ambiq-apollo3-pac/rt" ]

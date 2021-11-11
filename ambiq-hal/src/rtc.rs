@@ -98,14 +98,13 @@ impl Rtc {
     }
 
     pub fn enable_alarm(&mut self) {
-        self.clear_interrupts();
-
-        cortex_m::interrupt::free(|_| {
+        // cortex_m::interrupt::free(|_| {
+            self.clear_interrupts();
             self.rtc.inten.write(|w| w.alm().set_bit());
             unsafe {
                 pac::NVIC::unmask(pac::Interrupt::RTC);
             }
-        });
+        // });
     }
 
     pub fn disable_alarm(&mut self) {

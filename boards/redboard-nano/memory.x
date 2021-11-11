@@ -13,6 +13,16 @@ MEMORY
 /*   { */
 /*     . = ALIGN(4); */
 /*     _stext = .; */
+/*     KEEP(*(.vector_table.interrupts)) */
+/*     *(.text) */
+/*     *(.text*) */
+/* } */
+/* SECTIONS */
+/* { */
+/*   .text : */
+/*   { */
+/*     . = ALIGN(4); */
+/*     _stext = .; */
 /*     KEEP(*(.isr_vector)) */
 /*     KEEP(*(.ble_patch)) */
 /*     *(.text) */

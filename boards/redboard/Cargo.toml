@@ -12,6 +12,11 @@ cortex-m = "0.7.3"
 
 [dependencies.ambiq-hal]
 path = "../../ambiq-hal"
+features = [ "rt"]
 
 [dev-dependencies]
 rtt-target = { version = "*", features = [ "cortex-m" ] }
+panic-rtt-target = { version = "*", features = [ "cortex-m" ] }
+panic-semihosting = "*"
+panic-itm = "*"
+cortex-m-semihosting = { version = "*", features = [ "jlink-quirks" ] }
