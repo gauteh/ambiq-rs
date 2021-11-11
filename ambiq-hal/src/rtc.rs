@@ -87,10 +87,7 @@ impl Rtc {
     }
 
     pub fn clear_interrupts(&mut self) {
-        unsafe {
-            // self.rtc.intclr.write(|w| w.bits(0x8));
-            self.rtc.intclr.write(|w| w.alm().set_bit());
-        }
+        self.rtc.intclr.write(|w| w.alm().set_bit());
     }
 
     pub fn disable_alarm_repeat(&mut self) {
@@ -98,20 +95,18 @@ impl Rtc {
     }
 
     pub fn enable_alarm(&mut self) {
-        // cortex_m::interrupt::free(|_| {
+        cortex_m::interrupt::free(|_| {
             self.clear_interrupts();
             self.rtc.inten.write(|w| w.alm().set_bit());
             unsafe {
                 pac::NVIC::unmask(pac::Interrupt::RTC);
             }
-        // });
+        });
     }
 
     pub fn disable_alarm(&mut self) {
+        pac::NVIC::mask(pac::Interrupt::RTC);
         self.rtc.inten.write(|w| w.alm().clear_bit());
-        unsafe {
-            pac::NVIC::mask(pac::Interrupt::RTC);
-        }
         self.clear_interrupts();
     }
 }
