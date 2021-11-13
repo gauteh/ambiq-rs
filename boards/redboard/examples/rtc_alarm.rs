@@ -35,10 +35,6 @@ fn main() -> ! {
     rprintln!("RTC: enable alarm");
     rtc.enable_alarm();
 
-    // for _ in 0..100 {
-    //     rprintln!("flush rtt");
-    // }
-
     rprintln!("Enable interrupts");
     unsafe {
         cortex_m::interrupt::enable();
