@@ -14,7 +14,7 @@ cortex-m-rt = { version = "*", optional = true }
 paste = "1.0.5"
 nb = "1.0.0"
 ufmt = "0.1.0"
-defmt = "0.2.3"
+defmt = "0.3"
 embedded-time = "0.12.1"
 chrono = { version = "0.4.19", default-features = false }
 
@@ -28,16 +28,9 @@ path = "../pac/apollo3"
 version = "0.1.0"
 
 [features]
-defmt-default = []
-defmt-trace = []
-defmt-debug = []
-defmt-info = []
-defmt-warn = []
-defmt-error = []
-
 ambiq-sdk = [ "ambiq-hal-sys" ]
 sparkfun-redboard = [ "ambiq-hal-sys?/sparkfun-redboard" ]
 sparkfun-redboard-nano = [ "ambiq-hal-sys?/sparkfun-redboard-nano" ]
 # examples = ["panic-halt", "cortex-m-rt"]
-default = [ "defmt-default" ]
+default = [ ]
 rt = [ "cortex-m-rt", "ambiq-apollo3-pac/rt" ]
