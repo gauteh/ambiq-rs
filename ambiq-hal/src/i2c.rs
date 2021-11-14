@@ -5,9 +5,9 @@ use crate::pac;
 use crate::{halc, halc::c_types::*};
 use core::convert::TryInto;
 use core::ptr;
-use embedded_hal::blocking::i2c::*;
 #[allow(unused_imports)]
-use defmt::{error, warn, info, debug, trace};
+use defmt::{debug, error, info, trace, warn};
+use embedded_hal::blocking::i2c::*;
 
 /// The QWIIC I2C controller.
 pub struct I2c {
@@ -68,7 +68,7 @@ impl I2c {
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
         for _ in 0..10_000_000 {
-        // loop {
+            // loop {
             let status = self.iom.status.read();
 
             if status.idlest().is_idle() && !status.cmdact().is_active() {
@@ -115,7 +115,7 @@ impl I2c {
         }
     }
 
-    fn start_tx(&mut self, len: u16, dir: I2cDirection) {
+    fn start_tx(&mut self, len: u16, dir: I2cDirection, cont: bool) {
         use ambiq_apollo3_pac::iom0::cmd::CMD_A;
 
         trace!("start tx (len={}) (dir={})", &len, dir);
@@ -133,7 +133,7 @@ impl I2c {
                         I2cDirection::Read => CMD_A::READ,
                     })
                     .cont()
-                    .clear_bit()
+                    .bit(cont)
                     .offsetlo()
                     .bits(0)
                     .offsetcnt()
@@ -191,7 +191,76 @@ impl I2c {
 
     /// Pings the address by performing a zero-byte write.
     pub fn ping(&mut self, addr: u8) -> bool {
-        self.write(addr, &[]).is_ok()
+        self.write(addr, &[], false).is_ok()
+    }
+
+    fn write(&mut self, addr: u8, output: &[u8], cont: bool) -> Result<(), I2cError> {
+        // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16), or 255 bytes?
+        trace!(
+            "i2c: writing: addr = 0x{:02x}, len = {}",
+            addr,
+            output.len()
+        );
+
+        self.wait_transfer().ok();
+
+        let inten = self.disable_interrupts();
+        self.clear_interrupts();
+
+        self.set_addr(addr.into());
+
+        let mut words = output.chunks(4);
+
+        // Fill up FIFO before sending command.
+        while let Some(word) = words.next() {
+            if self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+                break;
+            }
+
+            self.push_fifo(word);
+        }
+
+        // Send command to start transmitting.
+        self.start_tx(output.len() as u16, I2cDirection::Write, cont);
+
+        // Push rest of bytes through FIFO
+        'outer: for word in words {
+            // Wait for FIFO to clear.
+            while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+                cortex_m::asm::nop();
+
+                if self.iom.intstat.read().cmdcmp().bit() {
+                    // Command completed without emptying FIFO, not good.
+                    break 'outer;
+                }
+            }
+
+            // Fill FIFO while there is space
+            self.push_fifo(word);
+        }
+
+        self.wait_transfer().ok();
+
+        // Check for errors
+        let r = match self.iom.intstat.read() {
+            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
+                Err(I2cError::SwError)
+            }
+            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(I2cError::ARB),
+            i if i.nak().bit() => Err(I2cError::NAK),
+            i if i.cqerr().bit() || i.derr().bit() => Err(I2cError::Other),
+            _ => Ok(()),
+        };
+
+        if r.is_err() {
+            error!("i2c: write: error: {:?}", r);
+            self.reset();
+        }
+
+        self.clear_interrupts();
+        self.enable_interrupts(inten);
+
+        r
     }
 }
 
@@ -237,68 +306,7 @@ impl Write<SevenBitAddress> for I2c {
     type Error = I2cError;
 
     fn write(&mut self, addr: u8, output: &[u8]) -> Result<(), Self::Error> {
-        // TODO: XXX: Do not attempt to write more bytes than can be held in cmd.tsize() (u16), or 255 bytes?
-        trace!("i2c: writing: addr = 0x{:02x}, len = {}", addr, output.len());
-
-        self.wait_transfer().ok();
-
-        let inten = self.disable_interrupts();
-        self.clear_interrupts();
-
-        self.set_addr(addr.into());
-
-        let mut words = output.chunks(4);
-
-        // Fill up FIFO before sending command.
-        while let Some(word) = words.next() {
-            if self.iom.fifoptr.read().fifo0rem().bits() < 4 {
-                break;
-            }
-
-            self.push_fifo(word);
-        }
-
-        // Send command to start transmitting.
-        self.start_tx(output.len() as u16, I2cDirection::Write);
-
-        // Push rest of bytes through FIFO
-        'outer: for word in words {
-            // Wait for FIFO to clear.
-            while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
-                cortex_m::asm::nop();
-
-                if self.iom.intstat.read().cmdcmp().bit() {
-                    // Command completed without emptying FIFO, not good.
-                    break 'outer;
-                }
-            }
-
-            // Fill FIFO while there is space
-            self.push_fifo(word);
-        }
-
-        self.wait_transfer().ok();
-
-        // Check for errors
-        let r = match self.iom.intstat.read() {
-            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
-                Err(I2cError::SwError)
-            }
-            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(I2cError::ARB),
-            i if i.nak().bit() => Err(I2cError::NAK),
-            i if i.cqerr().bit() || i.derr().bit() => Err(I2cError::Other),
-            _ => Ok(()),
-        };
-
-        if r.is_err() {
-            error!("i2c: write: error: {:?}", r);
-            self.reset();
-        }
-
-        self.clear_interrupts();
-        self.enable_interrupts(inten);
-
-        r
+        self.write(addr, output, false)
     }
 }
 
@@ -306,7 +314,11 @@ impl Read<SevenBitAddress> for I2c {
     type Error = I2cError;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
-        trace!("i2c: reading: addr = 0x{:02x}, len = {}", address, buffer.len());
+        trace!(
+            "i2c: reading: addr = 0x{:02x}, len = {}",
+            address,
+            buffer.len()
+        );
 
         if buffer.len() == 0 {
             return Err(I2cError::ReadTooFew);
@@ -319,12 +331,11 @@ impl Read<SevenBitAddress> for I2c {
 
         self.set_addr(address.into());
 
-        self.start_tx(buffer.len() as u16, I2cDirection::Read);
+        self.start_tx(buffer.len() as u16, I2cDirection::Read, false);
 
         for b in buffer.chunks_mut(4) {
             // Wait for FIFO to fill up and commands to complete.
-            while self.iom.fifoptr.read().fifo1siz().bits() < 4
-            {
+            while self.iom.fifoptr.read().fifo1siz().bits() < 4 {
                 cortex_m::asm::nop();
 
                 if self.iom.intstat.read().cmdcmp().bit() {
@@ -360,5 +371,24 @@ impl Read<SevenBitAddress> for I2c {
         self.enable_interrupts(inten);
 
         r
+    }
+}
+
+impl WriteRead<SevenBitAddress> for I2c {
+    type Error = I2cError;
+
+    fn write_read(
+        &mut self,
+        address: u8,
+        bytes: &[u8],
+        buffer: &mut [u8],
+    ) -> Result<(), Self::Error> {
+        // Write _with_ setting CONT
+        self.write(address, bytes, true)?;
+
+        // Read _without_ setting CONT (exactly same as Read)
+        self.read(address, buffer)?;
+
+        Ok(())
     }
 }
