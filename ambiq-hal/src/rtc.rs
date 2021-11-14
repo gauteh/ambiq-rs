@@ -1,16 +1,22 @@
+//! Real Time Clock
+//!
+//! TODO:
+//!     * Set time
+//!     * Add a Delay implementation that does deep sleep?
+//!     * Arbitrary time alarm (if possible?)
+
 use crate::clock::ClockCtrl;
-use embedded_time::Clock;
 use pac::{CLKGEN, RTC};
 
 pub struct Rtc {
     rtc: RTC,
 }
 
-pub fn bcd_to_dec(bcd: u8) -> u8 {
+fn bcd_to_dec(bcd: u8) -> u8 {
     (((bcd & 0xf0) >> 4) * 10) + (bcd & 0x0f)
 }
 
-pub fn dec_to_bcd(dec: u8) -> u8 {
+fn dec_to_bcd(dec: u8) -> u8 {
     ((dec / 10) << 4) | (dec % 10)
 }
 
@@ -112,8 +118,3 @@ impl Rtc {
 }
 
 pub type AlarmRepeat = pac::rtc::rtcctl::RPT_A;
-
-// impl Clock for Rtc {
-//     type T = u64;
-//     const SCALING_FACTOR =
-// }

@@ -1,4 +1,9 @@
 //! Delays
+//!
+//! TODO:
+//!
+//!     * Use cortex-m's Delay
+//!     * Add a busy-wait function?
 
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m::peripheral::SYST;

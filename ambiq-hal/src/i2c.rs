@@ -1,4 +1,11 @@
 //! I2C IO master through C-HAL
+//!
+//! TODO:
+//!
+//!     * Disable interrupts on start, not all the time.
+//!     * More sensible wait_transfer timeout or wait after reset.
+//!     * DMA transfer.
+//!     * Get rid of halc calls.
 
 use crate::gpio::{self, Mode};
 use crate::pac;
