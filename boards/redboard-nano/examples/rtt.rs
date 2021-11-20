@@ -27,11 +27,11 @@ fn main() -> ! {
     let mut delay = hal::delay::Delay::new(core.SYST, &mut peripherals.CLKGEN);
 
     let pins = hal::gpio::Pins::new(peripherals.GPIO);
-    let mut led = pins.d13.into_push_pull_output();
+    let mut led = pins.d19.into_push_pull_output();
 
     loop {
         led.toggle().unwrap();
-        delay.delay_ms(100u32);
+        delay.delay_ms(1000u32);
         rprintln!("Hello, world!");
     }
 }

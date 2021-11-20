@@ -29,12 +29,12 @@ dependencies = [
  "ambiq-hal-sys",
  "chrono",
  "cortex-m",
+ "cortex-m-rt",
  "defmt",
  "embedded-hal",
  "embedded-time",
  "nb 1.0.0",
  "paste",
- "typenum",
  "ufmt",
 ]
 
@@ -220,21 +220,22 @@ dependencies = [
 
 [[package]]
 name = "defmt"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15fe96f5d208164afa70583ff8f062e7697cbbb0b98e5076fbf8ac6da9edff0f"
+checksum = "62fb5df4d2b06a2dbf6ba26b49031f5f45f1aafdfca4b9259719466d362f34a0"
 dependencies = [
+ "bitflags",
  "defmt-macros",
- "semver 1.0.4",
 ]
 
 [[package]]
 name = "defmt-macros"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bd2c3949cb76c25f48c363e61b97f05b317efe3c12fa45d54a6599c3949c85e"
+checksum = "dede7fc0d15f4b8e15f3f023aefe6806066d7eb382123981e106fba05b35c5a3"
 dependencies = [
  "defmt-parser",
+ "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn",
@@ -242,9 +243,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc621c2b4f5f5635e34021c38af2ccb0c1dae38ba11ebee25258de8bb1cee9fe"
+checksum = "8d1ce010e1a51aef925c98f12ed81a4e0e96ce0185a87c33f1b3b9c8f20749c7"
 
 [[package]]
 name = "embedded-hal"
@@ -457,6 +458,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 
 [[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
+]
+
+[[package]]
 name = "proc-macro-hack"
 version = "0.5.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -537,7 +562,7 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 dependencies = [
- "semver 0.9.0",
+ "semver",
 ]
 
 [[package]]
@@ -548,12 +573,6 @@ checksum = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
 dependencies = [
  "semver-parser",
 ]
-
-[[package]]
-name = "semver"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
 
 [[package]]
 name = "semver-parser"
@@ -607,12 +626,6 @@ checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
  "unicode-width",
 ]
-
-[[package]]
-name = "typenum"
-version = "1.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b63708a265f51345575b27fe43f9500ad611579e764c79edbc2037b1121959ec"
 
 [[package]]
 name = "ufmt"
