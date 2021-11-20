@@ -1,0 +1,20 @@
+[package]
+name = "flashdev"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+panic-halt = "0.2.0"
+cortex-m-rt = { version = "0.7.0"}
+cortex-m = "0.7.3"
+cty = "0.2.2"
+
+[dependencies.ambiq-hal]
+path = "../../ambiq-hal"
+features = [ "ambiq-sdk", "sparkfun-redboard-nano", "rt"]
+
+[dev-dependencies]
+rtt-target = { version = "*", features = [ "cortex-m" ] }
+ufmt = "*"
