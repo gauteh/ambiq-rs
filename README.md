@@ -12,15 +12,17 @@ Eventually the board support crates will make it easier to determine which pins
 
 ## Getting started
 
-Take a look at the example in [quickstart](quickstart/), remember to change to
-your board, for how to get started.
+Take a look at the example in [quickstart](quickstart/) for how to get started.
+Remeber to select the correct board.
 
 ## Boards
+
+The board crates are not very useful yet.
 
 * [Sparkfun Redboard Artemis](https://www.sparkfun.com/products/15444) - [boards/redboard](boards/redboard) | [boards/redboard-halc](boards/redboard-halc)
 * [Sparkfun Redboard Artemis Nano](https://www.sparkfun.com/products/15443) - [boards/redboard-nano](boards/redboard-nano)
 
-## MCU
+## MCUs
 
 * [Ambiq Apollo3](https://ambiq.com/apollo3-blue/) - [ambiq-hal/](ambiq-hal/)
 
