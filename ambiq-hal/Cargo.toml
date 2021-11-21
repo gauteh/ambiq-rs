@@ -23,7 +23,7 @@ path = "../ambiq-hal-sys"
 optional = true
 version = "0.1"
 
-[dependencies.ambiq-apollo3-pac]
+[dependencies.ambiq-apollo3-pac2]
 path = "../pac/apollo3"
 version = "0.1.0"
 
@@ -33,4 +33,4 @@ sparkfun-redboard = [ "ambiq-hal-sys?/sparkfun-redboard" ]
 sparkfun-redboard-nano = [ "ambiq-hal-sys?/sparkfun-redboard-nano" ]
 # examples = ["panic-halt", "cortex-m-rt"]
 default = [ ]
-rt = [ "cortex-m-rt", "ambiq-apollo3-pac/rt" ]
+rt = [ "cortex-m-rt", "ambiq-apollo3-pac2/rt" ]

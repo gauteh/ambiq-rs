@@ -1,13 +1,13 @@
 [package]
-name = "ambiq-apollo3-pac"
+name = "ambiq-apollo3-pac2"
 version = "0.1.0"
-authors = ["Robert Cottrell <rgcottrell@gmail.com>"]
+authors = ["Gaute Hope <eg@gaute.vetsj.com>"]
 description = "Peripheral access API for APOLLO3 microcontrollers"
-repository = "https://github.com/rgcottrell/ambiq-apollo3-pac"
+repository = "https://github.com/gauteh/ambiq-rs"
 license = "MIT/Apache-2.0"
 keywords = ["ambiq", "apollo3", "svd2rust", "embedded", "no_std"]
 categories = ["embedded", "no-std"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 bare-metal = "0.2.4"

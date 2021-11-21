@@ -7,7 +7,7 @@
 extern crate cortex_m;
 
 pub extern crate embedded_hal as hal;
-pub extern crate ambiq_apollo3_pac as pac;
+pub extern crate ambiq_apollo3_pac2 as pac;
 
 #[cfg(feature = "rt")]
 #[cortex_m_rt::pre_init]

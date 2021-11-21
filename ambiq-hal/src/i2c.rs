@@ -135,7 +135,7 @@ impl I2c {
     }
 
     fn start_tx(&mut self, len: u16, dir: I2cDirection, cont: bool) {
-        use ambiq_apollo3_pac::iom0::cmd::CMD_A;
+        use pac::iom0::cmd::CMD_A;
 
         trace!("start tx (len={}) (dir={})", &len, dir);
 

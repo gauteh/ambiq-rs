@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "ambiq-apollo3-pac"
+name = "ambiq-apollo3-pac2"
 version = "0.1.0"
 dependencies = [
  "bare-metal",
