@@ -1,8 +1,10 @@
 extern crate bindgen;
 
 use cc;
+use fs_extra::dir;
 use glob;
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -12,6 +14,8 @@ enum Board {
 }
 
 fn main() {
+    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+
     // Build the Board Support Crate for the desired chip.
     println!("Building the Ambiq SDK and Sparkfun BSP");
 
@@ -24,17 +28,30 @@ fn main() {
     };
 
     let board_dir = match board {
-        Board::SfRedboard => "ambiq-sparkfun-sdk/boards_sfe/redboard_artemis/bsp",
-        Board::SfRedboardNano => "ambiq-sparkfun-sdk/boards_sfe/redboard_artemis_nano/bsp"
+        Board::SfRedboard => "boards_sfe/redboard_artemis/bsp",
+        Board::SfRedboardNano => "boards_sfe/redboard_artemis_nano/bsp",
     };
 
+    let sdk_dir = out_path.join("ambiq-sparkfun-sdk");
+    dir::copy(
+        "ambiq-sparkfun-sdk",
+        &out_path,
+        &dir::CopyOptions {
+            skip_exist: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let board_dir = sdk_dir.join(board_dir);
+
     Command::new("make")
-        .current_dir(&format!("{}/gcc", board_dir))
+        .current_dir(board_dir.join("gcc"))
         .status()
         .expect("could not re-build the BSP library");
 
     Command::new("make")
-        .current_dir("ambiq-sparkfun-sdk/mcu/apollo3/hal/gcc")
+        .current_dir(sdk_dir.join("mcu/apollo3/hal/gcc"))
         .status()
         .expect("could not re-build the HAL library");
 
@@ -42,8 +59,14 @@ fn main() {
     // apollo3 MCU functions (modulo the current chip + MCU).
     println!("cargo:rustc-link-lib=static=am_bsp");
     println!("cargo:rustc-link-lib=static=am_hal");
-    println!( "cargo:rustc-link-search=native={}/gcc/bin", board_dir);
-    println!("cargo:rustc-link-search=native=ambiq-sparkfun-sdk/mcu/apollo3/hal/gcc/bin");
+    println!(
+        "cargo:rustc-link-search=native={}",
+        board_dir.join("gcc/bin").to_str().unwrap()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        sdk_dir.join("mcu/apollo3/hal/gcc/bin").to_str().unwrap()
+    );
     println!("cargo:lib=am_bsp");
     println!("cargo:lib=am_hal");
 
@@ -64,7 +87,13 @@ fn main() {
 
     for path in glob::glob("ambiq-sparkfun-sdk/utils/*.c").unwrap() {
         let path = path.unwrap();
-        if !path.file_name().unwrap().to_str().unwrap().ends_with("regdump.c") {
+        if !path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .ends_with("regdump.c")
+        {
             compiler.file(path);
         }
     }
@@ -76,12 +105,9 @@ fn main() {
     compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
     compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");
     compiler.include("ambiq-sparkfun-sdk/devices");
-    compiler.include(board_dir);
+    compiler.include(&board_dir);
 
-    let paths = &[
-        "am_devices_button.c",
-        "am_devices_led.c",
-    ];
+    let paths = &["am_devices_button.c", "am_devices_led.c"];
 
     for path in paths {
         let path = PathBuf::from("ambiq-sparkfun-sdk/devices/").join(&path);
@@ -96,7 +122,7 @@ fn main() {
         .header("wrapper.h")
         .use_core()
         .ctypes_prefix("c_types")
-        .clang_arg(&format!("-I{}", board_dir))
+        .clang_arg(&format!("-I{}", board_dir.to_str().unwrap()))
         .clang_arg("-Iambiq-sparkfun-sdk/mcu/apollo3")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/ARM/Include")
@@ -107,7 +133,6 @@ fn main() {
         .expect("Unable to generate bindings");
 
     // Write the bindings to the $OUT_DIR/bindings.rs file.
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");

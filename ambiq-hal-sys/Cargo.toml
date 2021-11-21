@@ -12,6 +12,7 @@ repository = "https://github.com/gauteh/ambiq-rs"
 bindgen = "0.59"
 cc = "*"
 glob = "*"
+fs_extra = "1"
 
 [features]
 sparkfun-redboard = []

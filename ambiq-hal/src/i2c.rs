@@ -16,6 +16,18 @@ use core::ptr;
 use defmt::{debug, error, info, trace, warn};
 use embedded_hal::blocking::i2c::*;
 
+/// The I2C controllers support these clock speeds. See p. 269.
+pub enum Freq {
+    /// Standard mode
+    f100kHz,
+
+    /// Fast mode
+    f400kHz,
+
+    /// Fast mode+
+    f1mHz,
+}
+
 /// The QWIIC I2C controller.
 pub struct I2c {
     phiom: *mut c_void,
@@ -92,7 +104,7 @@ impl I2c {
 
     fn clear_interrupts(&mut self) {
         unsafe {
-            self.iom.intclr.write(|i| i.bits(0xffffffff));
+            self.iom.intclr.write(|i| i.bits(0xFFFF_FFFF));
         }
     }
 
