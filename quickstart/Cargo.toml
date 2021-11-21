@@ -8,9 +8,7 @@ edition = "2021"
 [dependencies]
 panic-halt = "0.2.0"
 cortex-m-rt = { version = "0.7.0"}
-cortex-m = "0.7.3"
 rtt-target = { version = "*", features = [ "cortex-m" ] }
-ufmt = "*"
 
 [dependencies.ambiq-hal]
 path = "../ambiq-hal"

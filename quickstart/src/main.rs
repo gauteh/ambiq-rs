@@ -9,7 +9,6 @@ use panic_halt as _; // you can put a breakpoint on `rust_begin_unwind` to catch
                      // use panic_semihosting as _; // logs messages to the host stderr; requires a debugger
 
 use cortex_m_rt::entry;
-use cortex_m;
 
 use ambiq_hal as hal;
 use hal::prelude::*;
