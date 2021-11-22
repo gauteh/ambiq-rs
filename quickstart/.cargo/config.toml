@@ -1,6 +1,3 @@
-[unstable]
-weak-dep-features = true
-
 [target.thumbv7em-none-eabihf]
 # runner = "../tools/svl-wrapper.sh"
 runner = "../tools/jlink-probe-run.sh"

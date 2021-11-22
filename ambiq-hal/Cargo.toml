@@ -30,8 +30,8 @@ version = "0.2.0"
 
 [features]
 ambiq-sdk = [ "ambiq-hal-sys" ]
-sparkfun-redboard = [ "ambiq-hal-sys?/sparkfun-redboard" ]
-sparkfun-redboard-nano = [ "ambiq-hal-sys?/sparkfun-redboard-nano" ]
+sparkfun-redboard = [ "ambiq-hal-sys/sparkfun-redboard" ]
+sparkfun-redboard-nano = [ "ambiq-hal-sys/sparkfun-redboard-nano" ]
 # examples = ["panic-halt", "cortex-m-rt"]
 default = [ ]
 rt = [ "cortex-m-rt", "ambiq-apollo3-pac2/rt" ]
