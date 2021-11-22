@@ -1,5 +1,6 @@
 [package]
 name = "ambiq-hal"
+description = "HAL for the Ambiq Apollo MCU and boards"
 authors = ["Gaute Hope <eg@gaute.vetsj.com>"]
 version = "0.1.0"
 edition = "2021"
