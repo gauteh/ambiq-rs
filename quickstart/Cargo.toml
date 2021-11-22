@@ -11,6 +11,6 @@ cortex-m-rt = { version = "0.7.0"}
 rtt-target = { version = "*", features = [ "cortex-m" ] }
 
 [dependencies.ambiq-hal]
-path = "../ambiq-hal"
+version = "*"
 features = [ "ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 

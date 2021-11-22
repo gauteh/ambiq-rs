@@ -14,6 +14,8 @@ dependencies = [
 [[package]]
 name = "ambiq-apollo3-pac2"
 version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a0e21a826b4a1cf0cf64ab50b68eda845b9cba700cd56689cafa3d378cc59c7"
 dependencies = [
  "bare-metal",
  "cortex-m",
@@ -24,6 +26,8 @@ dependencies = [
 [[package]]
 name = "ambiq-hal"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39886f975d4d4682dd3ab6ff2265024ede6f8ac042b82bf37fa583dff774c28f"
 dependencies = [
  "ambiq-apollo3-pac2",
  "ambiq-hal-sys",
@@ -41,6 +45,8 @@ dependencies = [
 [[package]]
 name = "ambiq-hal-sys"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a57974cfc7984f17f1ba8cc76006d19f23505d9eb7707435af55f1b9ec6ebc6a"
 dependencies = [
  "bindgen",
  "cc",
