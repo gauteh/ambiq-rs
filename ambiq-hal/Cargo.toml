@@ -11,8 +11,8 @@ repository = "https://github.com/gauteh/ambiq-rs"
 
 [dependencies]
 embedded-hal = { version = "0.2.6", features = [ "unproven" ] }
-cortex-m = "0.7.3"
-cortex-m-rt = { version = "*", optional = true }
+cortex-m = "0.7"
+cortex-m-rt = { version = "0.7", optional = true }
 paste = "1.0.5"
 nb = "1.0.0"
 ufmt = "0.1.0"
