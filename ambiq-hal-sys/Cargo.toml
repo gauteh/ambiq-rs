@@ -1,5 +1,6 @@
 [package]
 name = "ambiq-hal-sys"
+authors = ["Gaute Hope <eg@gaute.vetsj.com>"]
 version = "0.1.0"
 edition = "2021"
 description = "Bindings to the Ambiq SDK"
