@@ -32,7 +32,7 @@ fn main() -> ! {
     loop {
         led.toggle().unwrap();
         delay.delay_ms(1000u32);
-        rprintln!("Hello, world!");
+        rprintln!("Hello, world RTT!");
     }
 }
 
