@@ -5,6 +5,19 @@ edition = "2021"
 description = "Bindings to the Ambiq SDK"
 license-file = "AM-BSD-EULA.txt"
 repository = "https://github.com/gauteh/ambiq-rs"
+exclude = [
+  "ambiq-sparkfun-sdk/boards",
+  "ambiq-sparkfun-sdk/pack",
+  "ambiq-sparkfun-sdk/docs",
+  "ambiq-sparkfun-sdk/boards_sfe/common/tools_sfe",
+  "**/*.axf",
+  "**/*.out",
+  "**/*.log",
+  "**/*.txt",
+  "**/*.lib",
+  "**/*.a",
+  "**/bin/*",
+]
 
 [dependencies]
 

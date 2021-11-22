@@ -25,7 +25,7 @@ version = "0.1"
 
 [dependencies.ambiq-apollo3-pac2]
 path = "../pac/apollo3"
-version = "0.1.0"
+version = "0.2.0"
 
 [features]
 ambiq-sdk = [ "ambiq-hal-sys" ]
