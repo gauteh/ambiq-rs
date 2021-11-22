@@ -24,8 +24,8 @@ exclude = [
 
 [build-dependencies]
 bindgen = "0.59"
-cc = "*"
-glob = "*"
+cc = "1"
+glob = "0.3"
 fs_extra = "1"
 
 [features]
