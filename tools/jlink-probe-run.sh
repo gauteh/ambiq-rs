@@ -16,13 +16,12 @@ arm-none-eabi-objcopy -S -O binary "${TARGET}" "${BIN}"
 
 echo "writing JLink script to ${JLINK}.."
 cat > ${JLINK} <<EOF
-halt
-waithalt
-reset
-erase
-loadbin ${BIN} 0x10000
-halt
-exit
+r
+sleep 10
+wreg MSP, 0x10000100
+loadbin ${BIN}, 0x10000
+w4 0x40000004 0x1B
+qc
 EOF
 
 echo "flashing using JLinkExe.."
