@@ -14,3 +14,5 @@ rtt-target = { version = "*", features = [ "cortex-m" ] }
 version = "*"
 features = [ "ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 
+[patch.crates-io]
+ambiq-hal = { path = "../ambiq-hal" }

@@ -16,6 +16,7 @@ fn bcd_to_dec(bcd: u8) -> u8 {
     (((bcd & 0xf0) >> 4) * 10) + (bcd & 0x0f)
 }
 
+#[allow(unused)]
 fn dec_to_bcd(dec: u8) -> u8 {
     ((dec / 10) << 4) | (dec % 10)
 }
@@ -81,14 +82,8 @@ impl Rtc {
     pub fn set_alarm_repeat(&mut self, interval: AlarmRepeat) {
         // TODO: Also support 1/10th and 1/100th second alarms.
 
-        unsafe {
-            // self.rtc.almup.write(|w| w.bits(0x0));
-            // self.rtc.almlow.write(|w| w.bits(0x0));
-            self.rtc.almup.reset();
-            self.rtc.almlow.reset();
-            // self.rtc.almlow.write(|w| w.alm100().bits(0));
-            // self.rtc.almlow.write(|w| w.alm100().bits(0));
-        }
+        self.rtc.almup.reset();
+        self.rtc.almlow.reset();
         self.rtc.rtcctl.modify(|_, w| w.rpt().variant(interval));
     }
 

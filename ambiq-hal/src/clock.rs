@@ -5,13 +5,16 @@ pub const CLKGEN_CLKKEY: u32 = 71;
 
 pub use pac::CLKGEN;
 
+#[allow(unused)]
 fn clk_cfg<F, R>(f: F) -> R
 where
     F: FnOnce() -> R,
 {
     cortex_m::interrupt::free(|_| {
         unsafe {
-            (*pac::CLKGEN::ptr()).clkkey.write(|w| w.bits(CLKGEN_CLKKEY));
+            (*pac::CLKGEN::ptr())
+                .clkkey
+                .write(|w| w.bits(CLKGEN_CLKKEY));
         }
 
         let r = f();
