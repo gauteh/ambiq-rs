@@ -70,6 +70,8 @@ pub trait SdaPin<T>: private::Sealed {}
 #[doc(hidden)]
 pub trait SclPin<T>: private::Sealed {}
 
+impl SdaPin<pac::IOM2> for Sda<25> {}
+impl SclPin<pac::IOM2> for Scl<27> {}
 impl SdaPin<pac::IOM4> for Sda<40> {}
 impl SclPin<pac::IOM4> for Scl<39> {}
 
@@ -78,12 +80,17 @@ mod private {
 
     pub trait Sealed {}
 
+    impl Sealed for Sda<25> {}
+    impl Sealed for Scl<27> {}
     impl Sealed for Sda<40> {}
     impl Sealed for Scl<39> {}
 }
 
 
-/// QWIIC I2C controller on Redboard Artemis.
+/// QWIIC I2C controller on Redboard Nano.
+pub type Iom2 = I2c<pac::IOM2, 25, 27>;
+
+/// QWIIC I2C controller on Redboard.
 pub type Iom4 = I2c<pac::IOM4, 40, 39>;
 
 pub struct I2c<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
@@ -111,8 +118,8 @@ where
 {
     pub fn new(
         iom: IOM,
-        scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
         sda: gpio::pin::Pin<SDA, { Mode::Floating }>,
+        scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
     ) -> I2c<IOM, SDA, SCL> {
         let mut phiom = ptr::null_mut();
 
@@ -139,17 +146,18 @@ where
             // Let's get rid of this stuff asap
             if scl.pin_num() == 39 {
                 // IOM4
+                defmt::debug!("Setting up pins for IOM4, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
-            } else if  {
-
+            } else if scl.pin_num() == 27 {
+                // IOM2
+                defmt::debug!("Setting up pins for IOM2, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SCL);
+                halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SDA);
             } else {
                 unimplemented!()
             }
         }
-
-        // Disable DMA. We are doing direct writes / reads with busy polling.
-        iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
 
         I2c {
             phiom,
@@ -191,6 +199,9 @@ where
         unsafe {
             // Disable IOM interrupts
             self.iom.inten.write(|i| i.bits(0));
+
+            // Disable DMA. We are doing direct writes / reads with busy polling.
+            self.iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
         }
 
         inten

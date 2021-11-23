@@ -236,17 +236,26 @@ pub struct Pins {
     /// * USART0 RX (Serial-over-USB)
     pub rx0: P49<{ Mode::Floating }>,
 
-    /// * QWIIC SDA
+    /// * QWIIC SDA (Redboard Artemis)
     /// * SDA4
     /// * MISO4
     /// * RX1
     pub d14: P40<{ Mode::Floating }>,
 
-    /// * QWIIC SCL
+    /// * QWIIC SCL (Redboard Artemis)
     /// * SCL4
     /// * SCK4
     /// * TX1
     pub d15: P39<{ Mode::Floating }>,
+
+    /// * QWIIC SDA (Redboard Nano)
+    /// * SDA2
+    pub d17: P25<{ Mode::Floating }>,
+
+    /// * QWIIC SCL (Redboard Nano)
+    /// * SCL2
+    /// * SCK2
+    pub d18: P27<{ Mode::Floating }>,
 
     /// * GPIO d19
     /// * Blue LED (Redboard Artemis Nano)
@@ -264,6 +273,8 @@ impl Pins {
             d13: Pin::new(),
             d14: Pin::new(),
             d15: Pin::new(),
+            d17: Pin::new(),
+            d18: Pin::new(),
             d19: Pin::new(),
             tx0: Pin::new(),
             rx0: Pin::new(),
@@ -275,17 +286,10 @@ impl Pins {
 // Pad number, Pad register, Cfg register
 pin!(5,  B, A);
 pin!(19, E, C);
+pin!(25, G, D);
+pin!(27, G, D);
 pin!(39, J, E);
 pin!(40, K, F);
 pin!(48, M, G);
 pin!(49, M, G);
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[test]
-//     fn set_up_led() {
-//         let p = pac::Peripherals::take().unwrap();
-//     }
-// }
