@@ -11,6 +11,7 @@ use crate::gpio::{self, Mode};
 use crate::pac;
 use crate::{halc, halc::c_types::*};
 use core::convert::TryInto;
+use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
@@ -19,32 +20,100 @@ use embedded_hal::blocking::i2c::*;
 /// The I2C controllers support these clock speeds. See p. 269.
 pub enum Freq {
     /// Standard mode
-    f100kHz,
+    F100kHz,
 
     /// Fast mode
-    f400kHz,
+    F400kHz,
 
     /// Fast mode+
-    f1mHz,
+    F1mHz,
 }
 
-/// The QWIIC I2C controller.
-pub struct I2c {
+#[derive(defmt::Format)]
+enum I2cDirection {
+    Write = 0x00,
+    Read = 0x01,
+}
+
+#[derive(ufmt::derive::uDebug, Copy, Clone, defmt::Format)]
+pub enum I2cError {
+    /// This indicates an error outside of our control, no such device, etc.
+    WriteHwError,
+
+    /// Arbitrier (?) error.
+    ARB,
+
+    /// NAK received.
+    NAK,
+
+    Other,
+
+    /// This indicates that the HW interface was operated wrongly, usually by an error in this
+    /// driver.
+    SwError,
+
+    /// Have to read more than zero bytes.
+    ReadTooFew,
+
+    Timeout,
+}
+
+// This is an attempt at preventing users from instantiating an IOM with different pins than those
+// that can be used.
+#[doc(hidden)]
+pub struct Sda<const P: usize>;
+#[doc(hidden)]
+pub struct Scl<const P: usize>;
+
+#[doc(hidden)]
+pub trait SdaPin<T>: private::Sealed {}
+#[doc(hidden)]
+pub trait SclPin<T>: private::Sealed {}
+
+impl SdaPin<pac::IOM4> for Sda<40> {}
+impl SclPin<pac::IOM4> for Scl<39> {}
+
+mod private {
+    use super::{Sda, Scl};
+
+    pub trait Sealed {}
+
+    impl Sealed for Sda<40> {}
+    impl Sealed for Scl<39> {}
+}
+
+
+/// QWIIC I2C controller on Redboard Artemis.
+pub type Iom4 = I2c<pac::IOM4, 40, 39>;
+
+pub struct I2c<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+where
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>
+{
     phiom: *mut c_void,
 
-    iom: pac::IOM4,
-    #[allow(dead_code)]
-    sda: gpio::pin::P40<{ Mode::Floating }>,
-    #[allow(dead_code)]
-    scl: gpio::pin::P39<{ Mode::Floating }>,
+    iom: IOM,
+
+    #[allow(unused)]
+    sda: gpio::pin::Pin<SDA, { Mode::Floating }>,
+    #[allow(unused)]
+    scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
 }
 
-impl I2c {
+impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+    I2c<IOM, SDA, SCL>
+where
+    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+{
     pub fn new(
-        iom: pac::IOM4,
-        scl: gpio::pin::P39<{ Mode::Floating }>,
-        sda: gpio::pin::P40<{ Mode::Floating }>,
-    ) -> I2c {
+        iom: IOM,
+        scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
+        sda: gpio::pin::Pin<SDA, { Mode::Floating }>,
+    ) -> I2c<IOM, SDA, SCL> {
         let mut phiom = ptr::null_mut();
 
         let mut iomcfg = halc::am_hal_iom_config_t {
@@ -67,8 +136,16 @@ impl I2c {
             //     w.smod1type().i2c_master().smod1en().set_bit()
             // });
 
-            halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
-            halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
+            // Let's get rid of this stuff asap
+            if scl.pin_num() == 39 {
+                // IOM4
+                halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
+                halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
+            } else if  {
+
+            } else {
+                unimplemented!()
+            }
         }
 
         // Disable DMA. We are doing direct writes / reads with busy polling.
@@ -283,7 +360,12 @@ impl I2c {
     }
 }
 
-impl Drop for I2c {
+impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize> Drop
+    for I2c<IOM, SDA, SCL>
+where
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+{
     fn drop(&mut self) {
         unsafe {
             halc::am_hal_iom_uninitialize(self.phiom);
@@ -292,36 +374,14 @@ impl Drop for I2c {
     }
 }
 
-#[derive(defmt::Format)]
-enum I2cDirection {
-    Write = 0x00,
-    Read = 0x01,
-}
-
-#[derive(ufmt::derive::uDebug, Copy, Clone, defmt::Format)]
-pub enum I2cError {
-    /// This indicates an error outside of our control, no such device, etc.
-    WriteHwError,
-
-    /// Arbitrier (?) error.
-    ARB,
-
-    /// NAK received.
-    NAK,
-
-    Other,
-
-    /// This indicates that the HW interface was operated wrongly, usually by an error in this
-    /// driver.
-    SwError,
-
-    /// Have to read more than zero bytes.
-    ReadTooFew,
-
-    Timeout,
-}
-
-impl Write<SevenBitAddress> for I2c {
+impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+    Write<SevenBitAddress> for I2c<IOM, SDA, SCL>
+where
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = I2cError;
 
     fn write(&mut self, addr: u8, output: &[u8]) -> Result<(), Self::Error> {
@@ -329,7 +389,14 @@ impl Write<SevenBitAddress> for I2c {
     }
 }
 
-impl Read<SevenBitAddress> for I2c {
+impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+    Read<SevenBitAddress> for I2c<IOM, SDA, SCL>
+where
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = I2cError;
 
     fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
@@ -393,7 +460,14 @@ impl Read<SevenBitAddress> for I2c {
     }
 }
 
-impl WriteRead<SevenBitAddress> for I2c {
+impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+    WriteRead<SevenBitAddress> for I2c<IOM, SDA, SCL>
+where
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = I2cError;
 
     fn write_read(
