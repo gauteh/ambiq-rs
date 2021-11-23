@@ -132,7 +132,13 @@ where
         };
 
         unsafe {
-            halc::am_hal_iom_initialize(4, &mut phiom); // only necessary if phiom is going to be used.
+            let iomi = match scl.pin_num() {
+                27 => 2,
+                39 => 4,
+                _ => unimplemented!()
+            };
+
+            halc::am_hal_iom_initialize(iomi, &mut phiom); // only necessary if phiom is going to be used.
             halc::am_hal_iom_power_ctrl(phiom, 0, false); // SYSCTRL_WAKE = 0
 
             halc::am_hal_iom_configure(phiom, &mut iomcfg);
@@ -144,16 +150,16 @@ where
             // });
 
             // Let's get rid of this stuff asap
-            if scl.pin_num() == 39 {
-                // IOM4
-                defmt::debug!("Setting up pins for IOM4, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
-                halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
-                halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
-            } else if scl.pin_num() == 27 {
+            if iomi == 2 {
                 // IOM2
                 defmt::debug!("Setting up pins for IOM2, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SDA);
+            } else if iomi == 4 {
+                // IOM4
+                defmt::debug!("Setting up pins for IOM4, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
+                halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
             } else {
                 unimplemented!()
             }
