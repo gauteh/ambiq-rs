@@ -32,4 +32,4 @@ fs_extra = "1"
 utils = []
 sparkfun-redboard = []
 sparkfun-redboard-nano = []
-default = [ "sparkfun-redboard" ]
+default = [ "utils" ]

@@ -87,12 +87,8 @@ fn main() {
 
         for path in glob::glob("ambiq-sparkfun-sdk/utils/*.c").unwrap() {
             let path = path.unwrap();
-            if !path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .ends_with("regdump.c")
+            let spath = path.file_name().unwrap().to_str().unwrap();
+            if !(spath.ends_with("regdump.c") || spath.ends_with("faultisr.c"))
             {
                 compiler.file(path);
             }
