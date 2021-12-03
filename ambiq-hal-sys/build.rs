@@ -77,26 +77,31 @@ fn main() {
     //     .compile("startup_gcc");
 
     // Utils
-    let mut compiler = cc::Build::new();
-    compiler.warnings(false); // not my problem.
-    compiler.include("ambiq-sparkfun-sdk/mcu/apollo3");
-    compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
-    compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");
-    compiler.include("ambiq-sparkfun-sdk/devices");
+    let am_utils = if env::var_os("CARGO_FEATURE_UTILS").is_some() {
+        let mut compiler = cc::Build::new();
+        compiler.warnings(false); // not my problem.
+        compiler.include("ambiq-sparkfun-sdk/mcu/apollo3");
+        compiler.include("ambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include");
+        compiler.include("ambiq-sparkfun-sdk/CMSIS/ARM/Include");
+        compiler.include("ambiq-sparkfun-sdk/devices");
 
-    for path in glob::glob("ambiq-sparkfun-sdk/utils/*.c").unwrap() {
-        let path = path.unwrap();
-        if !path
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .ends_with("regdump.c")
-        {
-            compiler.file(path);
+        for path in glob::glob("ambiq-sparkfun-sdk/utils/*.c").unwrap() {
+            let path = path.unwrap();
+            if !path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .ends_with("regdump.c")
+            {
+                compiler.file(path);
+            }
         }
-    }
-    compiler.compile("am_utils");
+        compiler.compile("am_utils");
+        true
+    } else {
+        false
+    };
 
     // Devices
     let mut compiler = cc::Build::new();
@@ -122,6 +127,7 @@ fn main() {
         .use_core()
         .ctypes_prefix("c_types")
         .clang_arg(&format!("-I{}", board_dir.to_str().unwrap()))
+        .clang_arg(&format!("-DAM_UTIL_ENABLE={}", if am_utils { "1" } else { "0" }))
         .clang_arg("-Iambiq-sparkfun-sdk/mcu/apollo3")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/AmbiqMicro/Include")
         .clang_arg("-Iambiq-sparkfun-sdk/CMSIS/ARM/Include")

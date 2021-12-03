@@ -29,6 +29,7 @@ glob = "0.3"
 fs_extra = "1"
 
 [features]
+utils = []
 sparkfun-redboard = []
 sparkfun-redboard-nano = []
 default = [ "sparkfun-redboard" ]
