@@ -508,7 +508,6 @@ name = "quickstart-ambiq"
 version = "0.1.0"
 dependencies = [
  "ambiq-hal",
- "cortex-m",
  "cortex-m-rt",
  "panic-halt",
  "rtt-target",
