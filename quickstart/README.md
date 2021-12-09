@@ -21,7 +21,11 @@ $ cargo run && tail /dev/ttyACM0
 ## Using probe-run
 
 If you have a debugger, and have [this patch](https://github.com/probe-rs/probe-rs/pull/855) applied to probe-rs (as used by
-probe-run), you can set the runner to be `probe-run` in `.cargo/config.toml`.
+probe-run), you can set the runner to be `probe-run` in `.cargo/config.toml`:
+
+```
+$ cargo run --bin rtt
+```
 
 ## New projects
 
