@@ -35,7 +35,7 @@ enum I2cDirection {
     Read = 0x01,
 }
 
-#[derive(ufmt::derive::uDebug, Copy, Clone, defmt::Format)]
+#[derive(ufmt::derive::uDebug, Debug, Copy, Clone, defmt::Format)]
 pub enum I2cError {
     /// This indicates an error outside of our control, no such device, etc.
     WriteHwError,
