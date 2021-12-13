@@ -120,15 +120,22 @@ where
         iom: IOM,
         sda: gpio::pin::Pin<SDA, { Mode::Floating }>,
         scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
+        freq: Freq,
     ) -> I2c<IOM, SDA, SCL> {
         let mut phiom = ptr::null_mut();
+
+        let freq = match freq {
+            Freq::F100kHz => halc::AM_HAL_IOM_100KHZ,
+            Freq::F400kHz => halc::AM_HAL_IOM_400KHZ,
+            Freq::F1mHz => halc::AM_HAL_IOM_1MHZ,
+        };
 
         let mut iomcfg = halc::am_hal_iom_config_t {
             eInterfaceMode: halc::cAM_HAL_IOM_I2CMODE,
             eSpiMode: 0,
             pNBTxnBuf: ptr::null_mut(),
             ui32NBTxnBufLength: 0,
-            ui32ClockFreq: halc::AM_HAL_IOM_100KHZ,
+            ui32ClockFreq: freq,
         };
 
         unsafe {
