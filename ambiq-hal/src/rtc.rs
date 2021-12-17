@@ -8,6 +8,8 @@
 use crate::clock::ClockCtrl;
 use pac::{CLKGEN, RTC};
 
+use chrono::{Datelike, Timelike};
+
 pub struct Rtc {
     rtc: RTC,
 }
@@ -48,6 +50,35 @@ impl Rtc {
         self.rtc.rtcctl.modify(|_, w| w.rstop().stop());
     }
 
+    /// Set the current time and date (accuracy 1/100th).
+    ///
+    /// The century will always be the 22nd (21xx).
+    pub fn set(&self, dt: chrono::NaiveDateTime) {
+        let date = dt.date();
+        let time = dt.time();
+
+        let year = date.year();
+        let yr = year % 100;
+
+        self.rtc.ctrup.write(|w| unsafe {
+            w.ctryr()
+                .bits(dec_to_bcd(yr as u8))
+                .ctrmo()
+                .bits(dec_to_bcd(date.month() as u8))
+                .ctrdate()
+                .bits(dec_to_bcd(date.day() as u8))
+                .ctrwkdy()
+                .bits(dec_to_bcd(date.weekday() as u8))
+        });
+
+        self.rtc.ctrlow.write(|w| unsafe {
+            w.ctrhr().bits(dec_to_bcd(time.hour() as u8))
+                .ctrmin().bits(dec_to_bcd(time.minute() as u8))
+                .ctrsec().bits(dec_to_bcd(time.second() as u8))
+                .ctr100().bits(dec_to_bcd((time.nanosecond() / 1000_0000 * 10) as u8))
+        });
+    }
+
     /// Get the current datetime (accurate to 1/100th second). Blocks untill no rollover
     /// error.
     pub fn now(&self) -> chrono::NaiveDateTime {
@@ -65,8 +96,11 @@ impl Rtc {
             }
         };
 
+        let yr = bcd_to_dec(upper.ctryr().bits()) as i32;
+        let ce = 21;
+
         chrono::NaiveDate::from_ymd(
-            bcd_to_dec(upper.ctryr().bits()).into(),
+            ce * 100 + yr,
             bcd_to_dec(upper.ctrmo().bits()).into(),
             bcd_to_dec(upper.ctrdate().bits()).into(),
         )
