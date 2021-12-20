@@ -257,6 +257,14 @@ pub struct Pins {
     /// * SCK2
     pub d18: P27<{ Mode::Floating }>,
 
+    /// * SCL3
+    /// * TX1
+    pub d7: P42<{ Mode::Floating }>,
+
+    /// * SDA3
+    /// * RX1
+    pub d6: P43<{ Mode::Floating }>,
+
     /// * GPIO d19
     /// * Blue LED (Redboard Artemis Nano)
     pub d19: P19<{ Mode::Floating }>,
@@ -270,6 +278,8 @@ impl Pins {
 
         Pins {
             _gpio: gpio,
+            d6: Pin::new(),
+            d7: Pin::new(),
             d13: Pin::new(),
             d14: Pin::new(),
             d15: Pin::new(),
@@ -290,6 +300,8 @@ pin!(25, G, D);
 pin!(27, G, D);
 pin!(39, J, E);
 pin!(40, K, F);
+pin!(42, K, F);
+pin!(43, K, F);
 pin!(48, M, G);
 pin!(49, M, G);
 

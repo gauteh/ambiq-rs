@@ -72,6 +72,10 @@ pub trait SclPin<T>: private::Sealed {}
 
 impl SdaPin<pac::IOM2> for Sda<25> {}
 impl SclPin<pac::IOM2> for Scl<27> {}
+
+impl SdaPin<pac::IOM3> for Sda<43> {}
+impl SclPin<pac::IOM3> for Scl<42> {}
+
 impl SdaPin<pac::IOM4> for Sda<40> {}
 impl SclPin<pac::IOM4> for Scl<39> {}
 
@@ -82,6 +86,10 @@ mod private {
 
     impl Sealed for Sda<25> {}
     impl Sealed for Scl<27> {}
+
+    impl Sealed for Sda<43> {}
+    impl Sealed for Scl<42> {}
+
     impl Sealed for Sda<40> {}
     impl Sealed for Scl<39> {}
 }
@@ -89,6 +97,8 @@ mod private {
 
 /// QWIIC I2C controller on Redboard Nano.
 pub type Iom2 = I2c<pac::IOM2, 25, 27>;
+
+pub type Iom3 = I2c<pac::IOM3, 43, 42>;
 
 /// QWIIC I2C controller on Redboard.
 pub type Iom4 = I2c<pac::IOM4, 40, 39>;
@@ -141,6 +151,7 @@ where
         unsafe {
             let iomi = match scl.pin_num() {
                 27 => 2,
+                42 => 3,
                 39 => 4,
                 _ => unimplemented!()
             };
@@ -162,6 +173,11 @@ where
                 defmt::debug!("Setting up pins for IOM2, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SDA);
+            } else if iomi == 3 {
+                // IOM3
+                defmt::debug!("Setting up pins for IOM3, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM3_SCL);
+                halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM3_SDA);
             } else if iomi == 4 {
                 // IOM4
                 defmt::debug!("Setting up pins for IOM4, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
