@@ -7,6 +7,7 @@
 
 use crate::clock::ClockCtrl;
 use pac::{CLKGEN, RTC};
+use pac::rtc::rtcctl::RPT_A;
 
 use chrono::{Datelike, Timelike};
 
@@ -114,11 +115,21 @@ impl Rtc {
 
     /// Set the repeat alarm interval. Remember to enable the alarm as well.
     pub fn set_alarm_repeat(&mut self, interval: AlarmRepeat) {
-        // TODO: Also support 1/10th and 1/100th second alarms.
-
         self.rtc.almup.reset();
         self.rtc.almlow.reset();
-        self.rtc.rtcctl.modify(|_, w| w.rpt().variant(interval));
+
+        self.rtc.rtcctl.modify(|_, w| w.rpt().variant(interval.into()));
+
+        match interval {
+            AlarmRepeat::DeciSecond => {
+                self.rtc.almlow.write(|w| unsafe { w.alm100().bits(0xf0) });
+            },
+            AlarmRepeat::CentiSecond => {
+                self.rtc.almlow.write(|w| unsafe { w.alm100().bits(0xff) });
+            },
+            _ => {
+            }
+        }
     }
 
     pub fn clear_interrupts(&mut self) {
@@ -146,4 +157,42 @@ impl Rtc {
     }
 }
 
-pub type AlarmRepeat = pac::rtc::rtcctl::RPT_A;
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
+pub enum AlarmRepeat {
+    Disabled,
+    Year,
+    Month,
+    Week,
+    Day,
+    Hour,
+    Minute,
+    Second,
+
+    /// Every 100th millisecond
+    DeciSecond,
+
+    /// Every 10th millisecond
+    CentiSecond,
+}
+
+impl Into<RPT_A> for AlarmRepeat {
+    fn into(self) -> RPT_A {
+        use AlarmRepeat::*;
+        use RPT_A::*;
+
+        match self {
+            Disabled => DIS,
+            Year => YEAR,
+            Month => MONTH,
+            Week => WEEK,
+            Day => DAY,
+            Hour => HR,
+            Minute => MIN,
+            Second => SEC,
+            DeciSecond => SEC,
+            CentiSecond => SEC,
+        }
+    }
+}
+
