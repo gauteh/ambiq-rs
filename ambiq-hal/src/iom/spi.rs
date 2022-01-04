@@ -2,15 +2,15 @@ use core::ops::{Deref, DerefMut};
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use embedded_hal::spi::FullDuplex;
+use embedded_hal::spi::{self, FullDuplex};
 
 use crate::gpio::{self, Mode};
 use crate::pac;
 use crate::{halc, halc::c_types::*};
 
-use super::Direction as I2cDirection;
+use super::Direction;
 pub use super::Freq;
-pub use super::IomError as I2cError;
+pub use super::IomError as SpiError;
 
 // This prevents an IOM from being instantiated with incorrect pins.
 #[doc(hidden)]
@@ -81,18 +81,27 @@ where
         miso: gpio::pin::Pin<MISO, { Mode::Floating }>,
         sck: gpio::pin::Pin<SCK, { Mode::Floating }>,
         freq: Freq,
+        mode: spi::Mode,
     ) -> Spi<IOM, MOSI, MISO, SCK> {
         let mut phiom = ptr::null_mut();
 
+        // TODO: Can apparently support a much wider (and higher) range of frequencies.
         let freq = match freq {
             Freq::F100kHz => halc::AM_HAL_IOM_100KHZ,
             Freq::F400kHz => halc::AM_HAL_IOM_400KHZ,
             Freq::F1mHz => halc::AM_HAL_IOM_1MHZ,
         };
 
+        let mode = match mode {
+            spi::MODE_0 => 0,
+            spi::MODE_1 => 1,
+            spi::MODE_2 => 2,
+            spi::MODE_3 => 3,
+        };
+
         let mut iomcfg = halc::am_hal_iom_config_t {
-            eInterfaceMode: halc::cAM_HAL_IOM_I2CMODE,
-            eSpiMode: 0,
+            eInterfaceMode: halc::cAM_HAL_IOM_SPIMODE,
+            eSpiMode: mode,
             pNBTxnBuf: ptr::null_mut(),
             ui32NBTxnBufLength: 0,
             ui32ClockFreq: freq,
@@ -134,5 +143,28 @@ where
             miso,
             sck,
         }
+    }
+}
+
+
+
+impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> FullDuplex<u8> for Spi<IOM, MOSI, MISO, SCK>
+where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
+    Mosi<MOSI>: MosiPin<IOM>,
+    Miso<MISO>: MisoPin<IOM>,
+    Sck<SCK>: SckPin<IOM>,
+{
+    type Error = SpiError;
+
+    fn read(&mut self) -> nb::Result<u8, Self::Error> {
+        unimplemented!()
+    }
+
+    fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+        unimplemented!()
     }
 }
