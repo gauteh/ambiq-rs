@@ -228,7 +228,14 @@ pub struct Pins {
 
     /// * GPIO d13
     /// * Blue LED (Redboard Artemis)
+    /// * SCK0 (SPI0)
     pub d13: P5<{ Mode::Floating }>,
+
+    /// * MISO0 (SPI0)
+    pub d12: P6<{ Mode::Floating }>,
+
+    /// * MOSI0 (SPI0)
+    pub d11: P7<{ Mode::Floating }>,
 
     /// * USART0 TX (Serial-over-USB)
     pub tx0: P48<{ Mode::Floating }>,
@@ -280,6 +287,8 @@ impl Pins {
             _gpio: gpio,
             d6: Pin::new(),
             d7: Pin::new(),
+            d11: Pin::new(),
+            d12: Pin::new(),
             d13: Pin::new(),
             d14: Pin::new(),
             d15: Pin::new(),
@@ -295,6 +304,8 @@ impl Pins {
 // Declare all the pins
 // Pad number, Pad register, Cfg register
 pin!(5,  B, A);
+pin!(6,  B, A);
+pin!(7,  B, A);
 pin!(19, E, C);
 pin!(25, G, D);
 pin!(27, G, D);

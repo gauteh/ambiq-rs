@@ -7,56 +7,19 @@
 //!     * DMA transfer.
 //!     * Get rid of halc calls.
 
+use super::Iom;
 use crate::gpio::{self, Mode};
 use crate::pac;
 use crate::{halc, halc::c_types::*};
-use core::convert::TryInto;
-use core::ops::Deref;
+use core::ops::{Deref, DerefMut};
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 use embedded_hal::blocking::i2c::*;
 
-/// The I2C controllers support these clock speeds. See p. 269.
-pub enum Freq {
-    /// Standard mode
-    F100kHz,
-
-    /// Fast mode
-    F400kHz,
-
-    /// Fast mode+
-    F1mHz,
-}
-
-#[derive(defmt::Format)]
-enum I2cDirection {
-    Write = 0x00,
-    Read = 0x01,
-}
-
-#[derive(ufmt::derive::uDebug, Debug, Copy, Clone, defmt::Format)]
-pub enum I2cError {
-    /// This indicates an error outside of our control, no such device, etc.
-    WriteHwError,
-
-    /// Arbitrier (?) error.
-    ARB,
-
-    /// NAK received.
-    NAK,
-
-    Other,
-
-    /// This indicates that the HW interface was operated wrongly, usually by an error in this
-    /// driver.
-    SwError,
-
-    /// Have to read more than zero bytes.
-    ReadTooFew,
-
-    Timeout,
-}
+pub use super::Freq;
+pub use super::IomError as I2cError;
+use super::Direction as I2cDirection;
 
 // This is an attempt at preventing users from instantiating an IOM with different pins than those
 // that can be used.
@@ -80,7 +43,7 @@ impl SdaPin<pac::IOM4> for Sda<40> {}
 impl SclPin<pac::IOM4> for Scl<39> {}
 
 mod private {
-    use super::{Sda, Scl};
+    use super::{Scl, Sda};
 
     pub trait Sealed {}
 
@@ -94,7 +57,6 @@ mod private {
     impl Sealed for Scl<39> {}
 }
 
-
 /// QWIIC I2C controller on Redboard Nano.
 pub type Iom2 = I2c<pac::IOM2, 25, 27>;
 
@@ -103,10 +65,11 @@ pub type Iom3 = I2c<pac::IOM3, 43, 42>;
 /// QWIIC I2C controller on Redboard.
 pub type Iom4 = I2c<pac::IOM4, 40, 39>;
 
-pub struct I2c<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
+pub struct I2c<IOM, const SDA: usize, const SCL: usize>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
-    Scl<SCL>: SclPin<IOM>
+    Scl<SCL>: SclPin<IOM>,
 {
     phiom: *mut c_void,
 
@@ -118,9 +81,9 @@ where
     scl: gpio::pin::Pin<SCL, { Mode::Floating }>,
 }
 
-impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
-    I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> I2c<IOM, SDA, SCL>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
     Sda<SDA>: SdaPin<IOM>,
@@ -153,7 +116,7 @@ where
                 27 => 2,
                 42 => 3,
                 39 => 4,
-                _ => unimplemented!()
+                _ => unimplemented!(),
             };
 
             halc::am_hal_iom_initialize(iomi, &mut phiom); // only necessary if phiom is going to be used.
@@ -170,17 +133,29 @@ where
             // Let's get rid of this stuff asap
             if iomi == 2 {
                 // IOM2
-                defmt::debug!("Setting up pins for IOM2, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                defmt::debug!(
+                    "Setting up pins for IOM2, SCL: {}, SDA: {}",
+                    scl.pin_num(),
+                    sda.pin_num()
+                );
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM2_SDA);
             } else if iomi == 3 {
                 // IOM3
-                defmt::debug!("Setting up pins for IOM3, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                defmt::debug!(
+                    "Setting up pins for IOM3, SCL: {}, SDA: {}",
+                    scl.pin_num(),
+                    sda.pin_num()
+                );
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM3_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM3_SDA);
             } else if iomi == 4 {
                 // IOM4
-                defmt::debug!("Setting up pins for IOM4, SCL: {}, SDA: {}", scl.pin_num(), sda.pin_num());
+                defmt::debug!(
+                    "Setting up pins for IOM4, SCL: {}, SDA: {}",
+                    scl.pin_num(),
+                    sda.pin_num()
+                );
                 halc::am_hal_gpio_pinconfig(scl.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SCL);
                 halc::am_hal_gpio_pinconfig(sda.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM4_SDA);
             } else {
@@ -193,52 +168,6 @@ where
             iom,
             scl,
             sda,
-        }
-    }
-
-    fn wait_transfer(&mut self) -> Result<(), I2cError> {
-        defmt::trace!("wait transfer..");
-        // wait for previous transfer, this check is only necessary if
-        // the previous write was aborted due to e.g. a timeout.
-        for _ in 0..10_000_000 {
-            // loop {
-            let status = self.iom.status.read();
-
-            if status.idlest().is_idle() && !status.cmdact().is_active() {
-                defmt::trace!("wait transfer: transfer done.");
-                return Ok(());
-            }
-
-            cortex_m::asm::nop();
-        }
-
-        defmt::warn!("wait transfer: timed out!");
-        Err(I2cError::Timeout)
-    }
-
-    fn clear_interrupts(&mut self) {
-        unsafe {
-            self.iom.intclr.write(|i| i.bits(0xFFFF_FFFF));
-        }
-    }
-
-    fn disable_interrupts(&mut self) -> u32 {
-        let inten = self.iom.inten.read().bits();
-
-        unsafe {
-            // Disable IOM interrupts
-            self.iom.inten.write(|i| i.bits(0));
-
-            // Disable DMA. We are doing direct writes / reads with busy polling.
-            self.iom.dmacfg.modify(|_, dw| dw.dmaen().dis());
-        }
-
-        inten
-    }
-
-    fn enable_interrupts(&mut self, inten: u32) {
-        unsafe {
-            self.iom.inten.write(|i| i.bits(inten));
         }
     }
 
@@ -278,52 +207,7 @@ where
         }
     }
 
-    /// Resets the I2C module and clears FIFOs.
-    pub fn reset(&mut self) {
-        defmt::trace!("i2c: reset");
 
-        let inten = self.disable_interrupts();
-
-        self.wait_transfer().ok(); // XXX: Ignoring this, maybe better to reset the module if it
-                                   // doesn't work?.
-
-        // disable the submodule
-        self.iom.submodctrl.modify(|_r, w| w.smod1en().clear_bit());
-
-        // reset FIFO
-        self.iom.fifoctrl.modify(|_r, w| w.fiforstn().clear_bit());
-
-        defmt::trace!("i2c: reset: waiting for submodule");
-        // delay for "> 6 clocks"?
-        for _ in 0..10_000_000 {
-            cortex_m::asm::nop();
-        }
-        defmt::trace!("i2c: reset: waiting for submodule: done");
-
-        self.iom.fifoctrl.modify(|_r, w| w.fiforstn().set_bit());
-        self.iom.submodctrl.modify(|_r, w| w.smod1en().set_bit());
-
-        self.clear_interrupts();
-        self.enable_interrupts(inten);
-    }
-
-    fn push_fifo(&mut self, word: &[u8]) {
-        let word = if word.len() == 4 {
-            u32::from_ne_bytes(word.try_into().unwrap())
-        } else {
-            // pad to full word.
-            let mut fullword = [0u8; 4];
-            for (b, w) in word.iter().zip(fullword.iter_mut()) {
-                *w = *b;
-            }
-
-            u32::from_ne_bytes(fullword)
-        };
-
-        unsafe {
-            self.iom.fifopush.write(|f| f.bits(word));
-        }
-    }
 
     /// Pings the address by performing a zero-byte write.
     pub fn ping(&mut self, addr: u8) -> bool {
@@ -338,10 +222,10 @@ where
             output.len()
         );
 
-        self.wait_transfer().ok();
+        self.iom.wait_transfer().ok();
 
-        let inten = self.disable_interrupts();
-        self.clear_interrupts();
+        let inten = self.iom.disable_interrupts();
+        self.iom.clear_interrupts();
 
         self.set_addr(addr.into());
 
@@ -353,7 +237,7 @@ where
                 break;
             }
 
-            self.push_fifo(word);
+            self.iom.push_fifo(word);
         }
 
         // Send command to start transmitting.
@@ -372,10 +256,10 @@ where
             }
 
             // Fill FIFO while there is space
-            self.push_fifo(word);
+            self.iom.push_fifo(word);
         }
 
-        self.wait_transfer().ok();
+        self.iom.wait_transfer().ok();
 
         // Check for errors
         let r = match self.iom.intstat.read() {
@@ -390,19 +274,19 @@ where
 
         if r.is_err() {
             error!("i2c: write: error: {:?}", r);
-            self.reset();
+            self.iom.reset();
         }
 
-        self.clear_interrupts();
-        self.enable_interrupts(inten);
+        self.iom.clear_interrupts();
+        self.iom.enable_interrupts(inten);
 
         r
     }
 }
 
-impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize> Drop
-    for I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> Drop for I2c<IOM, SDA, SCL>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
 {
@@ -414,9 +298,9 @@ where
     }
 }
 
-impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
-    Write<SevenBitAddress> for I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> Write<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -429,9 +313,9 @@ where
     }
 }
 
-impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
-    Read<SevenBitAddress> for I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> Read<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -450,10 +334,10 @@ where
             return Err(I2cError::ReadTooFew);
         }
 
-        self.wait_transfer().ok();
+        self.iom.wait_transfer().ok();
 
-        let inten = self.disable_interrupts();
-        self.clear_interrupts();
+        let inten = self.iom.disable_interrupts();
+        self.iom.clear_interrupts();
 
         self.set_addr(address.into());
 
@@ -476,7 +360,7 @@ where
             }
         }
 
-        self.wait_transfer().ok();
+        self.iom.wait_transfer().ok();
 
         // Check for errors
         let r = match self.iom.intstat.read() {
@@ -490,19 +374,19 @@ where
         };
 
         if r.is_err() {
-            self.reset();
+            self.iom.reset();
         }
 
-        self.clear_interrupts();
-        self.enable_interrupts(inten);
+        self.iom.clear_interrupts();
+        self.iom.enable_interrupts(inten);
 
         r
     }
 }
 
-impl<IOM: Deref<Target = pac::iom0::RegisterBlock>, const SDA: usize, const SCL: usize>
-    WriteRead<SevenBitAddress> for I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> WriteRead<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
+    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,

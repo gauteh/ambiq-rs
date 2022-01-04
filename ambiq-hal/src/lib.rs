@@ -45,7 +45,7 @@ pub mod adc;
 pub mod uart;
 
 #[cfg(feature = "ambiq-sdk")]
-pub mod i2c;
+pub mod iom;
 
 pub mod prelude {
     pub use hal::prelude::*;
