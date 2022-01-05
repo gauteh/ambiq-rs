@@ -4,9 +4,9 @@ weak-dep-features = true
 [target.thumbv7em-none-eabihf]
 # uncomment this to make `cargo run` execute programs on QEMU
 # runner = "qemu-system-arm -cpu cortex-m3 -machine lm3s6965evb -nographic -semihosting-config enable=on,target=native -kernel"
-# runner = "probe-run --chip AMA3B1KK-KBR"
+runner = "probe-run --chip AMA3B1KK-KBR"
 # runner = "../../tools/objcopy-bootload-svl.sh"
-runner = "gdb-multiarch -x flash.gdb"
+# runner = "gdb-multiarch -x flash.gdb"
 
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
 # uncomment ONE of these three option to make `cargo run` start a GDB session
@@ -22,6 +22,7 @@ rustflags = [
 
   # LLD (shipped with the Rust toolchain) is used as the default linker
   "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x", # <- ADD this one
 
   # if you run into problems with LLD switch to the GNU linker by commenting out
   # this line

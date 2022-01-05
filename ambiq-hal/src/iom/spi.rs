@@ -3,6 +3,7 @@ use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 use embedded_hal::spi::{self, FullDuplex};
+use embedded_hal::blocking::spi::Transfer;
 
 use crate::gpio::{self, Mode};
 use crate::pac;
@@ -254,7 +255,7 @@ where
 
     fn send(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         if self.iom.is_ready() {
-            trace!("spi: full-duplex: reading byte");
+            trace!("spi: full-duplex: writing byte: {:x}", word);
             let inten = self.iom.disable_interrupts();
             self.iom.clear_interrupts();
 
@@ -278,5 +279,53 @@ where
         } else {
             Err(nb::Error::WouldBlock)
         }
+    }
+}
+
+
+impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Transfer<u8>
+    for Spi<IOM, MOSI, MISO, SCK>
+where
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
+    gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
+    Mosi<MOSI>: MosiPin<IOM>,
+    Miso<MISO>: MisoPin<IOM>,
+    Sck<SCK>: SckPin<IOM>,
+{
+    type Error = IomError;
+    fn transfer<'w>(
+        &mut self,
+        words: &'w mut [u8]
+    ) -> Result<&'w [u8], Self::Error>
+    {
+        trace!("spi: full-duplex: transfer: {:x}", &words);
+        self.iom.wait_transfer().ok();
+
+        let inten = self.iom.disable_interrupts();
+        self.iom.clear_interrupts();
+
+        // set Full-Duplex mode
+        self.iom.mspicfg.write(|w| w.fulldup().set_bit());
+        self.start_tx(words.len() as u16, Direction::Write, false);
+
+        // Write
+        self.iom.push_fifo(words);
+
+        // Read
+        self.iom.pop_fifo(words);
+
+        // Check for errors
+        let r = self.iom.check_error();
+
+        if r.is_err() {
+            self.iom.reset();
+        }
+
+        self.iom.clear_interrupts();
+        self.iom.enable_interrupts(inten);
+
+        Ok(words)
     }
 }
