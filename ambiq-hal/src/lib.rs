@@ -46,6 +46,8 @@ pub mod uart;
 
 #[cfg(feature = "ambiq-sdk")]
 pub mod iom;
+#[cfg(feature = "ambiq-sdk")]
+pub use iom::{i2c, spi};
 
 pub mod prelude {
     pub use hal::prelude::*;

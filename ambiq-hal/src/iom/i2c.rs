@@ -11,7 +11,7 @@ use super::Iom;
 use crate::gpio::{self, Mode};
 use crate::pac;
 use crate::{halc, halc::c_types::*};
-use core::ops::{Deref, DerefMut};
+use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
@@ -78,7 +78,7 @@ pub type Iom4 = I2c<pac::IOM4, 40, 39>;
 
 pub struct I2c<IOM, const SDA: usize, const SCL: usize>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
 {
@@ -94,7 +94,7 @@ where
 
 impl<IOM, const SDA: usize, const SCL: usize> I2c<IOM, SDA, SCL>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
     Sda<SDA>: SdaPin<IOM>,
@@ -287,7 +287,7 @@ where
 
 impl<IOM, const SDA: usize, const SCL: usize> Drop for I2c<IOM, SDA, SCL>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
 {
@@ -301,7 +301,7 @@ where
 
 impl<IOM, const SDA: usize, const SCL: usize> Write<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -316,7 +316,7 @@ where
 
 impl<IOM, const SDA: usize, const SCL: usize> Read<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -364,7 +364,7 @@ where
 
 impl<IOM, const SDA: usize, const SCL: usize> WriteRead<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
     Scl<SCL>: SclPin<IOM>,
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,

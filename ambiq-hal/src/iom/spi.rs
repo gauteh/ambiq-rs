@@ -1,4 +1,4 @@
-use core::ops::{Deref, DerefMut};
+use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
@@ -69,7 +69,7 @@ pub type Spi0 = Spi<pac::IOM0, 7, 6, 5>;
 
 pub struct Spi<IOM, const MOSI: usize, const MISO: usize, const SCK: usize>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -90,7 +90,7 @@ where
 
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Drop for Spi<IOM, MOSI, MISO, SCK>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -108,7 +108,7 @@ where
 
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Spi<IOM, MOSI, MISO, SCK>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
@@ -217,7 +217,7 @@ where
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> FullDuplex<u8>
     for Spi<IOM, MOSI, MISO, SCK>
 where
-    IOM: Deref<Target = pac::iom0::RegisterBlock> + DerefMut<Target = pac::iom0::RegisterBlock>,
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
     gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,

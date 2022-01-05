@@ -36,7 +36,7 @@ pub enum IomError {
 pub trait Iom {
     fn is_ready(&self) -> bool;
 
-    fn wait_transfer(&mut self) -> Result<(), IomError> {
+    fn wait_transfer(&self) -> Result<(), IomError> {
         defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
@@ -54,16 +54,16 @@ pub trait Iom {
     }
 
     /// Resets the I2C module and clears FIFOs.
-    fn reset(&mut self);
+    fn reset(&self);
 
-    fn clear_interrupts(&mut self);
-    fn disable_interrupts(&mut self) -> u32;
-    fn enable_interrupts(&mut self, inten: u32);
+    fn clear_interrupts(&self);
+    fn disable_interrupts(&self) -> u32;
+    fn enable_interrupts(&self, inten: u32);
 
     fn check_error(&self) -> Result<(), IomError>;
 
-    fn push_fifo(&mut self, word: &[u8]);
-    fn pop_fifo(&mut self, buffer: &mut [u8]);
+    fn push_fifo(&self, word: &[u8]);
+    fn pop_fifo(&self, buffer: &mut [u8]);
 }
 
 impl Iom for pac::iom0::RegisterBlock {
@@ -84,7 +84,7 @@ impl Iom for pac::iom0::RegisterBlock {
         status.idlest().is_idle() && !status.cmdact().is_active()
     }
 
-    fn reset(&mut self) {
+    fn reset(&self) {
         defmt::warn!("i2c: resetting module.");
 
         let inten = self.disable_interrupts();
@@ -112,13 +112,13 @@ impl Iom for pac::iom0::RegisterBlock {
         self.enable_interrupts(inten);
     }
 
-    fn clear_interrupts(&mut self) {
+    fn clear_interrupts(&self) {
         unsafe {
             self.intclr.write(|i| i.bits(0xFFFF_FFFF));
         }
     }
 
-    fn disable_interrupts(&mut self) -> u32 {
+    fn disable_interrupts(&self) -> u32 {
         let inten = self.inten.read().bits();
 
         unsafe {
@@ -132,13 +132,13 @@ impl Iom for pac::iom0::RegisterBlock {
         inten
     }
 
-    fn enable_interrupts(&mut self, inten: u32) {
+    fn enable_interrupts(&self, inten: u32) {
         unsafe {
             self.inten.write(|i| i.bits(inten));
         }
     }
 
-    fn push_fifo(&mut self, word: &[u8]) {
+    fn push_fifo(&self, word: &[u8]) {
         let word = if word.len() == 4 {
             u32::from_ne_bytes(word.try_into().unwrap())
         } else {
@@ -156,7 +156,7 @@ impl Iom for pac::iom0::RegisterBlock {
         }
     }
 
-    fn pop_fifo(&mut self, buffer: &mut [u8]) {
+    fn pop_fifo(&self, buffer: &mut [u8]) {
         for b in buffer.chunks_mut(4) {
             // Wait for FIFO to fill up and commands to complete.
             while self.fifoptr.read().fifo1siz().bits() < 4 {
