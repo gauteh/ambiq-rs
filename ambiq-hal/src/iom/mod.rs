@@ -33,7 +33,7 @@ pub enum IomError {
 }
 
 /// Common functionality between the I2C and SPI modules.
-pub trait Iom {
+trait Iom {
     fn is_ready(&self) -> bool;
 
     fn wait_transfer(&self) -> Result<(), IomError> {
