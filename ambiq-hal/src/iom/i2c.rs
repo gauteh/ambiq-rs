@@ -17,9 +17,20 @@ use core::ptr;
 use defmt::{debug, error, info, trace, warn};
 use embedded_hal::blocking::i2c::*;
 
-pub use super::Freq;
-pub use super::IomError as I2cError;
 use super::Direction as I2cDirection;
+pub use super::IomError as I2cError;
+
+/// The I2C controllers support these clock speeds. See p. 269.
+pub enum Freq {
+    /// Standard mode
+    F100kHz,
+
+    /// Fast mode
+    F400kHz,
+
+    /// Fast mode+
+    F1mHz,
+}
 
 // This is an attempt at preventing users from instantiating an IOM with different pins than those
 // that can be used.
@@ -207,8 +218,6 @@ where
         }
     }
 
-
-
     /// Pings the address by performing a zero-byte write.
     pub fn ping(&mut self, addr: u8) -> bool {
         self.write(addr, &[], false).is_ok()
@@ -262,15 +271,7 @@ where
         self.iom.wait_transfer().ok();
 
         // Check for errors
-        let r = match self.iom.intstat.read() {
-            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
-                Err(I2cError::SwError)
-            }
-            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(I2cError::ARB),
-            i if i.nak().bit() => Err(I2cError::NAK),
-            i if i.cqerr().bit() || i.derr().bit() => Err(I2cError::Other),
-            _ => Ok(()),
-        };
+        let r = self.iom.check_error();
 
         if r.is_err() {
             error!("i2c: write: error: {:?}", r);
@@ -343,35 +344,12 @@ where
 
         self.start_tx(buffer.len() as u16, I2cDirection::Read, false);
 
-        for b in buffer.chunks_mut(4) {
-            // Wait for FIFO to fill up and commands to complete.
-            while self.iom.fifoptr.read().fifo1siz().bits() < 4 {
-                cortex_m::asm::nop();
-
-                if self.iom.intstat.read().cmdcmp().bit() {
-                    break;
-                }
-            }
-
-            // Read a word
-            let word = self.iom.fifopop.read().bits();
-            for (w, b) in word.to_ne_bytes().iter().zip(b.iter_mut()) {
-                *b = *w;
-            }
-        }
+        self.iom.pop_fifo(buffer);
 
         self.iom.wait_transfer().ok();
 
         // Check for errors
-        let r = match self.iom.intstat.read() {
-            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
-                Err(I2cError::SwError)
-            }
-            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(I2cError::ARB),
-            i if i.nak().bit() => Err(I2cError::NAK),
-            i if i.cqerr().bit() || i.derr().bit() => Err(I2cError::Other),
-            _ => Ok(()),
-        };
+        let r = self.iom.check_error();
 
         if r.is_err() {
             self.iom.reset();

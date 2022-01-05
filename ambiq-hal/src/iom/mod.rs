@@ -3,18 +3,6 @@ use crate::pac;
 pub mod i2c;
 pub mod spi;
 
-/// The IOM controllers support these clock speeds. See p. 269.
-pub enum Freq {
-    /// Standard mode
-    F100kHz,
-
-    /// Fast mode
-    F400kHz,
-
-    /// Fast mode+
-    F1mHz,
-}
-
 #[derive(defmt::Format)]
 enum Direction {
     Write = 0x00,
@@ -46,28 +34,14 @@ pub enum IomError {
 
 /// Common functionality between the I2C and SPI modules.
 pub trait Iom {
-    fn wait_transfer(&mut self) -> Result<(), IomError>;
+    fn is_ready(&self) -> bool;
 
-    /// Resets the I2C module and clears FIFOs.
-    fn reset(&mut self);
-
-    fn clear_interrupts(&mut self);
-    fn disable_interrupts(&mut self) -> u32;
-    fn enable_interrupts(&mut self, inten: u32);
-
-    fn push_fifo(&mut self, word: &[u8]);
-}
-
-impl Iom for pac::iom0::RegisterBlock {
     fn wait_transfer(&mut self) -> Result<(), IomError> {
         defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
         for _ in 0..10_000_000 {
-            // loop {
-            let status = self.status.read();
-
-            if status.idlest().is_idle() && !status.cmdact().is_active() {
+            if self.is_ready() {
                 defmt::trace!("wait transfer: transfer done.");
                 return Ok(());
             }
@@ -79,13 +53,44 @@ impl Iom for pac::iom0::RegisterBlock {
         Err(IomError::Timeout)
     }
 
+    /// Resets the I2C module and clears FIFOs.
+    fn reset(&mut self);
+
+    fn clear_interrupts(&mut self);
+    fn disable_interrupts(&mut self) -> u32;
+    fn enable_interrupts(&mut self, inten: u32);
+
+    fn check_error(&self) -> Result<(), IomError>;
+
+    fn push_fifo(&mut self, word: &[u8]);
+    fn pop_fifo(&mut self, buffer: &mut [u8]);
+}
+
+impl Iom for pac::iom0::RegisterBlock {
+    fn check_error(&self) -> Result<(), IomError> {
+        match self.intstat.read() {
+            i if i.icmd().bit() || i.fovfl().bit() || i.fundfl().bit() || i.iacc().bit() => {
+                Err(IomError::SwError)
+            }
+            i if i.arb().bit() || i.start().bit() || i.stop().bit() => Err(IomError::ARB),
+            i if i.nak().bit() => Err(IomError::NAK),
+            i if i.cqerr().bit() || i.derr().bit() => Err(IomError::Other),
+            _ => Ok(()),
+        }
+    }
+
+    fn is_ready(&self) -> bool {
+        let status = self.status.read();
+        status.idlest().is_idle() && !status.cmdact().is_active()
+    }
+
     fn reset(&mut self) {
-        defmt::trace!("i2c: reset");
+        defmt::warn!("i2c: resetting module.");
 
         let inten = self.disable_interrupts();
 
         self.wait_transfer().ok(); // XXX: Ignoring this, maybe better to reset the module if it
-                                       // doesn't work?.
+                                   // doesn't work?.
 
         // disable the submodule
         self.submodctrl.modify(|_r, w| w.smod1en().clear_bit());
@@ -148,6 +153,25 @@ impl Iom for pac::iom0::RegisterBlock {
 
         unsafe {
             self.fifopush.write(|f| f.bits(word));
+        }
+    }
+
+    fn pop_fifo(&mut self, buffer: &mut [u8]) {
+        for b in buffer.chunks_mut(4) {
+            // Wait for FIFO to fill up and commands to complete.
+            while self.fifoptr.read().fifo1siz().bits() < 4 {
+                cortex_m::asm::nop();
+
+                if self.intstat.read().cmdcmp().bit() {
+                    break;
+                }
+            }
+
+            // Read a word
+            let word = self.fifopop.read().bits();
+            for (w, b) in word.to_ne_bytes().iter().zip(b.iter_mut()) {
+                *b = *w;
+            }
         }
     }
 }
