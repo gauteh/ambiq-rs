@@ -11,6 +11,9 @@ use pac::rtc::rtcctl::RPT_A;
 
 use chrono::{Datelike, Timelike};
 
+#[allow(unused_imports)]
+use defmt::{debug, error, info, trace, warn};
+
 pub struct Rtc {
     rtc: RTC,
 }
@@ -53,7 +56,7 @@ impl Rtc {
 
     /// Set the current time and date (accuracy 1/100th).
     ///
-    /// The century will always be the 22nd (21xx).
+    /// The century will always be the 21st (20xx).
     pub fn set(&self, dt: chrono::NaiveDateTime) {
         let date = dt.date();
         let time = dt.time();
@@ -61,16 +64,16 @@ impl Rtc {
         let year = date.year();
         let yr = year % 100;
 
-        self.rtc.ctrup.write(|w| unsafe {
-            w.ctryr()
-                .bits(dec_to_bcd(yr as u8))
-                .ctrmo()
-                .bits(dec_to_bcd(date.month() as u8))
-                .ctrdate()
-                .bits(dec_to_bcd(date.day() as u8))
-                .ctrwkdy()
-                .bits(dec_to_bcd(date.weekday() as u8))
-        });
+        debug!("set RTC to: {}-{}-{} {}:{}:{}.{}",
+            year,
+            date.month(),
+            date.day(),
+            time.hour(),
+            time.minute(),
+            time.second(),
+            time.nanosecond());
+
+        self.rtc.rtcctl.modify(|_, w| w.wrtc().en());
 
         self.rtc.ctrlow.write(|w| unsafe {
             w.ctrhr().bits(dec_to_bcd(time.hour() as u8))
@@ -78,6 +81,20 @@ impl Rtc {
                 .ctrsec().bits(dec_to_bcd(time.second() as u8))
                 .ctr100().bits(dec_to_bcd((time.nanosecond() / 1000_0000 * 10) as u8))
         });
+
+        self.rtc.ctrup.write(|w| unsafe {
+            w.ceb().dis() // TODO: support other centuries
+                .ctryr()
+                .bits(dec_to_bcd(yr as u8))
+                .ctrmo()
+                .bits(dec_to_bcd(date.month() as u8))
+                .ctrdate()
+                .bits(dec_to_bcd(date.day() as u8))
+                .ctrwkdy()
+                .bits(date.weekday() as u8)
+        });
+
+        self.rtc.rtcctl.modify(|_, w| w.wrtc().dis());
     }
 
     /// Get the current datetime (accurate to 1/100th second). Blocks untill no rollover
@@ -98,7 +115,7 @@ impl Rtc {
         };
 
         let yr = bcd_to_dec(upper.ctryr().bits()) as i32;
-        let ce = 21;
+        let ce = 20;
 
         chrono::NaiveDate::from_ymd(
             ce * 100 + yr,
