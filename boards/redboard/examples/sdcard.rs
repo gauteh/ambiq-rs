@@ -16,7 +16,7 @@ use cortex_m;
 use defmt::{println, info, debug, warn, error, trace};
 
 use embedded_hal::spi;
-use embedded_sdmmc::{SdMmcSpi};
+use embedded_sdmmc::{SdMmcSpi, sdmmc::AcquireOpts};
 use ambiq_hal as hal;
 use hal::prelude::*;
 
@@ -33,12 +33,13 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(dp.GPIO);
 
     println!("Setting up SPI..");
-    let spi = hal::spi::Spi0::new(dp.IOM0, pins.d11, pins.d12, pins.d13, hal::spi::Freq::F4mHz, spi::MODE_0);
-    let cs = pins.d10.into_push_pull_output();
+    let spi = hal::spi::Spi0::new(dp.IOM0, pins.d11, pins.d12, pins.d13, hal::spi::Freq::F400kHz, spi::MODE_0);
+    let mut cs = pins.d10.into_push_pull_output();
+    cs.internal_pull_up(true);
 
     println!("Setting up SD card..");
     let mut sd = SdMmcSpi::new(spi, cs);
-    let sd = sd.acquire().unwrap();
+    let sd = sd.acquire_with_opts(AcquireOpts { require_crc: false }).unwrap();
 
     println!("Card size: {}", sd.card_size_bytes().unwrap());
 

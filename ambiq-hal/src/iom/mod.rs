@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use defmt::{debug, error, info, trace, warn};
 use crate::pac;
 
 pub mod i2c;
@@ -158,6 +160,7 @@ impl Iom for pac::iom0::RegisterBlock {
 
     fn pop_fifo(&self, buffer: &mut [u8]) {
         for b in buffer.chunks_mut(4) {
+            trace!("pop fifo: wait for word ready");
             // Wait for FIFO to fill up and commands to complete.
             while self.fifoptr.read().fifo1siz().bits() < 4 {
                 cortex_m::asm::nop();
@@ -168,6 +171,7 @@ impl Iom for pac::iom0::RegisterBlock {
             }
 
             // Read a word
+            trace!("pop fifo: read word.");
             let word = self.fifopop.read().bits();
             for (w, b) in word.to_ne_bytes().iter().zip(b.iter_mut()) {
                 *b = *w;

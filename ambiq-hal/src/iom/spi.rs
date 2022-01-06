@@ -300,7 +300,6 @@ where
         words: &'w mut [u8]
     ) -> Result<&'w [u8], Self::Error>
     {
-        trace!("spi: full-duplex: transfer: {:x}", &words);
         self.iom.wait_transfer().ok();
 
         let inten = self.iom.disable_interrupts();
@@ -311,10 +310,14 @@ where
         self.start_tx(words.len() as u16, Direction::Write, false);
 
         // Write
+        trace!("spi: full-duplex: write: {:x}", &words);
         self.iom.push_fifo(words);
+
+        self.iom.wait_transfer().ok();
 
         // Read
         self.iom.pop_fifo(words);
+        trace!("spi: full-duplex: read: {:x}", &words);
 
         // Check for errors
         let r = self.iom.check_error();
