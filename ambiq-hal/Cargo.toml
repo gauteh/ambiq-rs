@@ -2,7 +2,7 @@
 name = "ambiq-hal"
 description = "HAL for the Ambiq Apollo MCU and boards"
 authors = ["Gaute Hope <eg@gaute.vetsj.com>"]
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/gauteh/ambiq-rs"
