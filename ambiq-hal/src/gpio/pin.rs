@@ -226,7 +226,9 @@ where
 pub struct Pins {
     _gpio: GPIO,
 
-    pub d10: P11<{ Mode::Floating }>,
+    /// * GPIO d10
+    /// * PWM
+    pub d10: P13<{ Mode::Floating }>,
 
     /// * GPIO d13
     /// * Blue LED (Redboard Artemis)
@@ -310,6 +312,7 @@ pin!(5,  B, A);
 pin!(6,  B, A);
 pin!(7,  B, A);
 pin!(11, C, B);
+pin!(13, D, B);
 pin!(19, E, C);
 pin!(25, G, D);
 pin!(27, G, D);
