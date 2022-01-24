@@ -9,7 +9,7 @@ pub type Frequency = wdt::cfg::CLKSEL_A;
 
 impl Watchdog {
     /// Initialize watchdog. `reset` should be true if watchdog can reset chip, the reset will
-    /// occur once `reset_count` cycles of the watchdog [`Frequency`] has occured without the
+    /// occur once `reset_count` cycles of the watchdog [`Frequency`] has occurred without the
     /// watchdog being fed ([`watchdog::Watchdog::feed`]).
     pub fn from(wdt: WDT, reset: bool, reset_count: u8, freq: Frequency) -> Watchdog {
         wdt.cfg.write(|w| unsafe {
@@ -28,6 +28,9 @@ impl Watchdog {
     pub fn start(&mut self) {
         self.wdt.cfg.modify(|_, w| w.wdten().set_bit());
         watchdog::Watchdog::feed(self);
+
+        // Seems like there's a HW-bug which requires this (from C-HAL). Should just read `0`.
+        self.wdt.rstrt.read().bits();
     }
 
     /// Locks the watchdog and starts the timer. The watchdog cannot be reconfigured.
