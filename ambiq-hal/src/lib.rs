@@ -40,6 +40,7 @@ pub mod time;
 pub mod delay;
 pub mod gpio;
 pub mod adc;
+pub mod watchdog;
 
 #[cfg(feature = "ambiq-sdk")]
 pub mod uart;
