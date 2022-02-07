@@ -29,7 +29,7 @@ impl Delay {
             pac::clkgen::cctrl::CORESEL_A::HFRC => {
                 // full frequency
                 clock::CLKGEN_FREQ_MAX_HZ
-            },
+            }
             pac::clkgen::cctrl::CORESEL_A::HFRC_DIV2 => {
                 // half
                 Hertz(clock::CLKGEN_FREQ_MAX_HZ.0 / 2)
@@ -38,7 +38,7 @@ impl Delay {
 
         Delay {
             syst,
-            sysclock: sysclock.into()
+            sysclock: sysclock.into(),
         }
     }
 
@@ -103,5 +103,82 @@ impl DelayUs<u16> for Delay {
 impl DelayUs<u8> for Delay {
     fn delay_us(&mut self, us: u8) {
         self.delay_us(us as u32)
+    }
+}
+
+
+#[cfg(feature = "ambiq-sdk")]
+pub use flash::FlashDelay;
+
+#[cfg(feature = "ambiq-sdk")]
+pub mod flash {
+    use super::*;
+
+    /// Uses the bootrom to implement a spin loop. Use this struct to busy wait in a spin loop without cache
+    /// or delay uncertainties.
+    ///
+    /// Notes for Apollo3:
+    /// - The ROM-based function executes at 3 cycles per iteration plus the normal
+    ///   function call, entry, and exit overhead and latencies.
+    /// - Cache settings affect call overhead.  However, the cache does not affect
+    ///   the time while inside the BOOTROM function.
+    /// - The function accounts for burst vs normal mode, along with some of the
+    ///   overhead encountered with executing the function itself (such as the
+    ///   check for burst mode).
+    /// - Use of the FLASH_CYCLES_US() or FLASH_CYCLES_US_NOCACHE() macros for the
+    ///   ui32Iterations parameter will result in approximate microsecond timing.
+    /// - The parameter us==0 is allowed but is still incurs a delay.
+    ///
+    /// > Interrupts are not disabled during execution of this function.
+    /// > Therefore, any interrupt taken will affect the delay timing.
+    #[derive(Clone, Copy)]
+    pub struct FlashDelay;
+
+    impl FlashDelay {
+        pub fn new() -> FlashDelay {
+            FlashDelay
+        }
+    }
+
+    impl DelayUs<u32> for FlashDelay {
+        fn delay_us(&mut self, us: u32) {
+            // Get clock frequency.
+            let clkgen = unsafe { &*CLKGEN::ptr() };
+            let sysclock = match clkgen.cctrl.read().coresel().variant() {
+                pac::clkgen::cctrl::CORESEL_A::HFRC => {
+                    // full frequency
+                    clock::CLKGEN_FREQ_MAX_HZ
+                }
+                pac::clkgen::cctrl::CORESEL_A::HFRC_DIV2 => {
+                    // half
+                    Hertz(clock::CLKGEN_FREQ_MAX_HZ.0 / 2)
+                }
+            };
+
+            let cycles = us * (sysclock.0 / 3_000_000);
+
+            unsafe {
+                halc::am_hal_flash_delay(cycles);
+            }
+        }
+    }
+
+    impl DelayUs<u16> for FlashDelay {
+        fn delay_us(&mut self, us: u16) {
+            self.delay_us(us as u32)
+        }
+    }
+
+    impl DelayUs<u8> for FlashDelay {
+        fn delay_us(&mut self, us: u8) {
+            self.delay_us(us as u32)
+        }
+    }
+
+    impl<T> DelayMs<T> for FlashDelay where T: Into<u32> {
+        fn delay_ms(&mut self, us: T) {
+            let us = us.into();
+            DelayUs::<u32>::delay_us(self, us * 1000);
+        }
     }
 }
