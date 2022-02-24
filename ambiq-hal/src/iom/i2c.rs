@@ -8,14 +8,16 @@
 //!     * Get rid of halc calls.
 
 use super::Iom;
-use crate::gpio::{self, Mode};
-use crate::pac;
-use crate::{halc, halc::c_types::*};
 use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 use embedded_hal::blocking::i2c::*;
+
+use crate::gpio::{self, Mode};
+use crate::delay::FlashDelay;
+use crate::pac;
+use crate::{halc, halc::c_types::*};
 
 use super::Direction as I2cDirection;
 pub use super::IomError as I2cError;
@@ -256,12 +258,12 @@ where
         'outer: for word in words {
             // Wait for FIFO to clear.
             while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
-                cortex_m::asm::nop();
-
                 if self.iom.intstat.read().cmdcmp().bit() {
                     // Command completed without emptying FIFO, not good.
                     break 'outer;
                 }
+
+                FlashDelay::delay_us(1);
             }
 
             // Fill FIFO while there is space

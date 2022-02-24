@@ -138,6 +138,27 @@ pub mod flash {
         pub fn new() -> FlashDelay {
             FlashDelay
         }
+
+        pub fn delay_us(us: u32) {
+            // Get clock frequency.
+            let clkgen = unsafe { &*CLKGEN::ptr() };
+            let sysclock = match clkgen.cctrl.read().coresel().variant() {
+                pac::clkgen::cctrl::CORESEL_A::HFRC => {
+                    // full frequency
+                    clock::CLKGEN_FREQ_MAX_HZ
+                }
+                pac::clkgen::cctrl::CORESEL_A::HFRC_DIV2 => {
+                    // half
+                    Hertz(clock::CLKGEN_FREQ_MAX_HZ.0 / 2)
+                }
+            };
+
+            let cycles = us * (sysclock.0 / 3_000_000);
+
+            unsafe {
+                halc::am_hal_flash_delay(cycles);
+            }
+        }
     }
 
     impl DelayUs<u32> for FlashDelay {

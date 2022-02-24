@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use crate::pac;
+use crate::{pac, delay::FlashDelay};
 
 pub mod i2c;
 pub mod spi;
@@ -163,11 +163,11 @@ impl Iom for pac::iom0::RegisterBlock {
             trace!("pop fifo: wait for word ready");
             // Wait for FIFO to fill up and commands to complete.
             while self.fifoptr.read().fifo1siz().bits() < 4 {
-                cortex_m::asm::nop();
-
                 if self.intstat.read().cmdcmp().bit() {
                     break;
                 }
+
+                FlashDelay::delay_us(1);
             }
 
             // Read a word
