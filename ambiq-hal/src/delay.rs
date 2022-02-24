@@ -159,6 +159,12 @@ pub mod flash {
                 halc::am_hal_flash_delay(cycles);
             }
         }
+
+        pub fn delay_cycles(cycles: u32) {
+            unsafe {
+                halc::am_hal_flash_delay(cycles);
+            }
+        }
     }
 
     impl DelayUs<u32> for FlashDelay {

@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use crate::{pac, delay::FlashDelay};
+use crate::{pac, delay::FlashDelay, clock};
 
 pub mod i2c;
 pub mod spi;
@@ -34,6 +34,10 @@ pub enum IomError {
     Timeout,
 }
 
+trait IomFreq {
+    fn freq(&self) -> u32;
+}
+
 /// Common functionality between the I2C and SPI modules.
 trait Iom {
     fn is_ready(&self) -> bool;
@@ -42,7 +46,7 @@ trait Iom {
         defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
-        for _ in 0..10_000_000 {
+        for _ in 0..500_000 {
             if self.is_ready() {
                 defmt::trace!("wait transfer: transfer done.");
                 return Ok(());
@@ -102,9 +106,8 @@ impl Iom for pac::iom0::RegisterBlock {
 
         defmt::trace!("i2c: reset: waiting for submodule");
         // delay for "> 6 clocks"?
-        for _ in 0..10_000_000 {
-            cortex_m::asm::nop();
-        }
+        let wait = clock::CLKGEN_FREQ_MAX_HZ.0 / 2 / 100_000; // longest possible delay (for i2c)
+        FlashDelay::delay_cycles(wait);
         defmt::trace!("i2c: reset: waiting for submodule: done");
 
         self.fifoctrl.modify(|_r, w| w.fiforstn().set_bit());

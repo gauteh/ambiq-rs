@@ -23,15 +23,16 @@ use super::Direction as I2cDirection;
 pub use super::IomError as I2cError;
 
 /// The I2C controllers support these clock speeds. See p. 269.
+#[repr(u32)]
 pub enum Freq {
     /// Standard mode
-    F100kHz,
+    F100kHz = 100_000,
 
     /// Fast mode
-    F400kHz,
+    F400kHz = 400_000,
 
     /// Fast mode+
-    F1mHz,
+    F1mHz = 1_000_000,
 }
 
 // This is an attempt at preventing users from instantiating an IOM with different pins than those
