@@ -23,5 +23,13 @@ where
 }
 
 pub mod pin;
+pub mod redboard_artemis;
+pub mod redboard_artemis_nano;
 
-pub use pin::{Pins, Mode};
+pub use pin::Mode;
+
+#[cfg(feature = "sparkfun-redboard")]
+pub use redboard_artemis::Pins;
+
+#[cfg(feature = "sparkfun-redboard-nano")]
+pub use redboard_artemis_nano::Pins;
