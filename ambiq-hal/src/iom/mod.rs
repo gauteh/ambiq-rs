@@ -104,9 +104,9 @@ impl Iom for pac::iom0::RegisterBlock {
         // reset FIFO
         self.fifoctrl.modify(|_r, w| w.fiforstn().clear_bit());
 
-        defmt::trace!("i2c: reset: waiting for submodule");
         // delay for "> 6 clocks"?
-        let wait = clock::CLKGEN_FREQ_MAX_HZ.0 / 2 / 100_000; // longest possible delay (for i2c)
+        let wait = clock::CLKGEN_FREQ_MAX_HZ.0 / 100_000; // longest possible delay (for i2c)
+        defmt::trace!("i2c: reset: waiting for submodule ({} cycles)", wait);
         FlashDelay::delay_cycles(wait);
         defmt::trace!("i2c: reset: waiting for submodule: done");
 
