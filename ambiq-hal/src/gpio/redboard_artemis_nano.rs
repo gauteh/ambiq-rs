@@ -14,15 +14,15 @@ pub struct Pins {
     /// * RX1
     pub d10: P40<{ Mode::Floating }>,
 
-    /// * GPIO d13
+    /// * GPIO d11
     /// * SCK0 (SPI0)
-    pub d13: P5<{ Mode::Floating }>,
-
-    /// * MISO0 (SPI0)
-    pub d12: P6<{ Mode::Floating }>,
+    pub d11: P5<{ Mode::Floating }>,
 
     /// * MOSI0 (SPI0)
-    pub d11: P7<{ Mode::Floating }>,
+    pub d12: P7<{ Mode::Floating }>,
+
+    /// * MISO0 (SPI0)
+    pub d13: P6<{ Mode::Floating }>,
 
     /// * USART0 TX (Serial-over-USB)
     pub tx0: P48<{ Mode::Floating }>,
@@ -30,11 +30,11 @@ pub struct Pins {
     /// * USART0 RX (Serial-over-USB)
     pub rx0: P49<{ Mode::Floating }>,
 
-    /// * QWIIC SDA (Redboard Nano)
+    /// * QWIIC SDA (Redboard Artemis Nano)
     /// * SDA2
     pub d17: P25<{ Mode::Floating }>,
 
-    /// * QWIIC SCL (Redboard Nano)
+    /// * QWIIC SCL (Redboard Artemis Nano)
     /// * SCL2
     /// * SCK2
     pub d18: P27<{ Mode::Floating }>,
@@ -50,6 +50,9 @@ pub struct Pins {
     /// * GPIO d19
     /// * Blue LED (Redboard Artemis Nano)
     pub d19: P19<{ Mode::Floating }>,
+
+    /// * GPIO / Analog a14
+    pub a14: P35<{ Mode::Floating }>,
 }
 
 impl Pins {
@@ -66,6 +69,7 @@ impl Pins {
             d17: Pin::new(),
             d18: Pin::new(),
             d19: Pin::new(),
+            a14: Pin::new(),
             tx0: Pin::new(),
             rx0: Pin::new(),
         }

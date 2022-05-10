@@ -232,6 +232,7 @@ pin!(13, D, B);
 pin!(19, E, C);
 pin!(25, G, D);
 pin!(27, G, D);
+pin!(35, I, E);
 pin!(39, J, E);
 pin!(40, K, F);
 pin!(42, K, F);
