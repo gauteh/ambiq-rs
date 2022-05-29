@@ -2,8 +2,8 @@ use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use embedded_hal::spi::{self, FullDuplex};
 use embedded_hal::blocking::spi::Transfer;
+use embedded_hal::spi::{self, FullDuplex};
 
 use crate::gpio::{self, Mode};
 use crate::pac;
@@ -12,6 +12,7 @@ use crate::{halc, halc::c_types::*};
 use super::{Direction, Iom, IomError};
 
 /// The SPI controllers support these clock speeds. See p. 269.
+#[derive(defmt::Format)]
 #[repr(u32)]
 pub enum Freq {
     F10kHz = 10_000,
@@ -87,6 +88,8 @@ where
     miso: gpio::pin::Pin<MISO, { Mode::Floating }>,
     #[allow(unused)]
     sck: gpio::pin::Pin<SCK, { Mode::Floating }>,
+
+    mode: spi::Mode,
 }
 
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Drop for Spi<IOM, MOSI, MISO, SCK>
@@ -125,11 +128,26 @@ where
         freq: Freq,
         mode: spi::Mode,
     ) -> Spi<IOM, MOSI, MISO, SCK> {
-        let mut phiom = ptr::null_mut();
+        let phiom = ptr::null_mut();
 
+        let mut spi = Spi {
+            phiom,
+            iom,
+            mosi,
+            miso,
+            sck,
+            mode,
+        };
+
+        spi.initialize(freq);
+
+        spi
+    }
+
+    fn initialize(&mut self, freq: Freq) {
         // TODO: Can apparently support a much wider (and higher) range of frequencies.
         let freq = freq as u32;
-        let mode = match mode {
+        let spimode = match self.mode {
             spi::MODE_0 => 0,
             spi::MODE_1 => 1,
             spi::MODE_2 => 2,
@@ -138,23 +156,23 @@ where
 
         let mut iomcfg = halc::am_hal_iom_config_t {
             eInterfaceMode: halc::cAM_HAL_IOM_SPIMODE,
-            eSpiMode: mode,
+            eSpiMode: spimode,
             pNBTxnBuf: ptr::null_mut(),
             ui32NBTxnBufLength: 0,
             ui32ClockFreq: freq,
         };
 
         unsafe {
-            let iomi = match sck.pin_num() {
+            let iomi = match self.sck.pin_num() {
                 5 => 0,
                 _ => unimplemented!(),
             };
 
-            halc::am_hal_iom_initialize(iomi, &mut phiom); // only necessary if phiom is going to be used.
-            halc::am_hal_iom_power_ctrl(phiom, 0, false); // SYSCTRL_WAKE = 0
+            halc::am_hal_iom_initialize(iomi, &mut self.phiom); // only necessary if phiom is going to be used.
+            halc::am_hal_iom_power_ctrl(self.phiom, 0, false); // SYSCTRL_WAKE = 0
 
-            halc::am_hal_iom_configure(phiom, &mut iomcfg);
-            halc::am_hal_iom_enable(phiom);
+            halc::am_hal_iom_configure(self.phiom, &mut iomcfg);
+            halc::am_hal_iom_enable(self.phiom);
 
             // IOM ENABLE
             // iom.submodctrl.write(|w| {
@@ -165,21 +183,23 @@ where
             if iomi == 0 {
                 // IOM0
                 defmt::debug!("Setting up pins for IOM0");
-                halc::am_hal_gpio_pinconfig(sck.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_SCK);
-                halc::am_hal_gpio_pinconfig(mosi.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MOSI);
-                halc::am_hal_gpio_pinconfig(miso.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MISO);
+                halc::am_hal_gpio_pinconfig(self.sck.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_SCK);
+                halc::am_hal_gpio_pinconfig(self.mosi.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MOSI);
+                halc::am_hal_gpio_pinconfig(self.miso.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MISO);
             } else {
                 unimplemented!()
             }
         }
+    }
 
-        Spi {
-            phiom,
-            iom,
-            mosi,
-            miso,
-            sck,
+    pub fn set_freq(&mut self, freq: Freq) {
+        defmt::debug!("Setting frequency to: {:?}", freq);
+        unsafe {
+            halc::am_hal_iom_uninitialize(self.phiom);
+            self.phiom = ptr::null_mut();
         }
+
+        self.initialize(freq);
     }
 
     fn start_tx(&mut self, len: u16, dir: Direction, cont: bool) {
@@ -282,7 +302,6 @@ where
     }
 }
 
-
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Transfer<u8>
     for Spi<IOM, MOSI, MISO, SCK>
 where
@@ -295,11 +314,7 @@ where
     Sck<SCK>: SckPin<IOM>,
 {
     type Error = IomError;
-    fn transfer<'w>(
-        &mut self,
-        words: &'w mut [u8]
-    ) -> Result<&'w [u8], Self::Error>
-    {
+    fn transfer<'w>(&mut self, words: &'w mut [u8]) -> Result<&'w [u8], Self::Error> {
         self.iom.wait_transfer().ok();
 
         let inten = self.iom.disable_interrupts();
