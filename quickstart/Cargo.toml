@@ -1,8 +1,9 @@
 [package]
-name = "quickstart-ambiq"
+name = "{{ project-name }}"
 version = "0.1.0"
 edition = "2021"
-default-run = "quickstart-ambiq"
+default-run = "{{ project-name }}"
+authors = [ "{{ authors }}" ]
 
 [dependencies]
 panic-halt = "0.2.0"
