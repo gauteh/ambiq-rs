@@ -1,13 +1,13 @@
 //! Real Time Clock
 //!
 //! TODO:
-//!     * Set time
 //!     * Add a Delay implementation that does deep sleep?
 //!     * Arbitrary time alarm (if possible?)
 
 use crate::clock::ClockCtrl;
 use pac::{CLKGEN, RTC};
 use pac::rtc::rtcctl::RPT_A;
+use rtcc::DateTimeAccess;
 
 use chrono::{Datelike, Timelike};
 
@@ -22,7 +22,6 @@ fn bcd_to_dec(bcd: u8) -> u8 {
     (((bcd & 0xf0) >> 4) * 10) + (bcd & 0x0f)
 }
 
-#[allow(unused)]
 fn dec_to_bcd(dec: u8) -> u8 {
     ((dec / 10) << 4) | (dec % 10)
 }
@@ -57,7 +56,7 @@ impl Rtc {
     /// Set the current time and date (accuracy 1/100th).
     ///
     /// The century will always be the 21st (20xx).
-    pub fn set(&self, dt: chrono::NaiveDateTime) {
+    pub fn set(&self, dt: &chrono::NaiveDateTime) {
         let date = dt.date();
         let time = dt.time();
 
@@ -171,6 +170,20 @@ impl Rtc {
         pac::NVIC::mask(pac::Interrupt::RTC);
         self.rtc.inten.write(|w| w.alm().clear_bit());
         self.clear_interrupts();
+    }
+}
+
+impl DateTimeAccess for Rtc {
+    type Error = !;
+
+    fn datetime(&mut self) -> Result<chrono::NaiveDateTime, !> {
+        Ok(self.now())
+    }
+
+    fn set_datetime(&mut self, datetime: &chrono::NaiveDateTime) -> Result<(), !> {
+        self.set(datetime);
+
+        Ok(())
     }
 }
 

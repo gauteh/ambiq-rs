@@ -19,6 +19,7 @@ ufmt = "0.1.0"
 defmt = "0.3"
 embedded-time = "0.12.1"
 chrono = { version = "0.4.19", default-features = false }
+rtcc = "0.3.0"
 
 [dependencies.ambiq-hal-sys]
 path = "../ambiq-hal-sys"
