@@ -78,7 +78,7 @@ impl Rtc {
             w.ctrhr().bits(dec_to_bcd(time.hour() as u8))
                 .ctrmin().bits(dec_to_bcd(time.minute() as u8))
                 .ctrsec().bits(dec_to_bcd(time.second() as u8))
-                .ctr100().bits(dec_to_bcd((time.nanosecond() / 1000_0000 * 10) as u8))
+                .ctr100().bits(dec_to_bcd((time.nanosecond() / 1_000_000 * 100) as u8))
         });
 
         self.rtc.ctrup.write(|w| unsafe {
