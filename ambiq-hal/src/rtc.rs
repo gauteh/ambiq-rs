@@ -114,10 +114,10 @@ impl Rtc {
         };
 
         let yr = bcd_to_dec(upper.ctryr().bits()) as i32;
-        let ce = 20;
+        const CE: i32 = 20;
 
         chrono::NaiveDate::from_ymd(
-            ce * 100 + yr,
+            CE * 100 + yr,
             bcd_to_dec(upper.ctrmo().bits()).into(),
             bcd_to_dec(upper.ctrdate().bits()).into(),
         )
