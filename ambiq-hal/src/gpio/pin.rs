@@ -1,6 +1,7 @@
 use super::gpio_cfg;
 use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use core::convert::Infallible;
+use core::marker::ConstParamTy;
 use paste::paste;
 
 /// The drive strength is controlled by setting registers:
@@ -29,7 +30,7 @@ pub enum InputMode {
     Enable = 1,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, ConstParamTy)]
 pub enum Mode {
     Floating,
     Input,
