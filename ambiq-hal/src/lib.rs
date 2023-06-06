@@ -26,7 +26,7 @@ unsafe fn pre_init() {
     //
     //
     // https://github.com/sparkfun/Apollo3_Uploader_SVL/issues/7
-    (*cortex_m::peripheral::SCB::ptr()).vtor.write(0x10000);
+    (*cortex_m::peripheral::SCB::PTR).vtor.write(0x10000);
 }
 
 
