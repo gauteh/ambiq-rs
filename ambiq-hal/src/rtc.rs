@@ -116,17 +116,16 @@ impl Rtc {
         let yr = bcd_to_dec(upper.ctryr().bits()) as i32;
         const CE: i32 = 20;
 
-        chrono::NaiveDate::from_ymd(
+        chrono::NaiveDate::from_ymd_opt(
             CE * 100 + yr,
             bcd_to_dec(upper.ctrmo().bits()).into(),
             bcd_to_dec(upper.ctrdate().bits()).into(),
-        )
-        .and_hms_milli(
+        ).and_then(|y| y.and_hms_milli_opt(
             bcd_to_dec(lower.ctrhr().bits()).into(),
             bcd_to_dec(lower.ctrmin().bits()).into(),
             bcd_to_dec(lower.ctrsec().bits()).into(),
             u32::from(bcd_to_dec(lower.ctr100().bits())) * 10u32,
-        )
+        )).unwrap()
     }
 
     /// Set the repeat alarm interval. Remember to enable the alarm as well.
