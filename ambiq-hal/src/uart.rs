@@ -133,6 +133,8 @@ impl Write<u8> for Uart0 {
     }
 }
 
+impl hal::blocking::serial::write::Default<u8> for Uart0 {}
+
 impl ufmt::uWrite for Uart0 {
     type Error = !;
 
