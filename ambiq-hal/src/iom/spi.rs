@@ -296,6 +296,17 @@ where
     }
 }
 
+impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> hal::blocking::spi::write::Default<u8>
+    for Spi<IOM, MOSI, MISO, SCK>
+where
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
+    gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
+    Mosi<MOSI>: MosiPin<IOM>,
+    Miso<MISO>: MisoPin<IOM>,
+    Sck<SCK>: SckPin<IOM> {}
+
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Transfer<u8>
     for Spi<IOM, MOSI, MISO, SCK>
 where
