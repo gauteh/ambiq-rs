@@ -69,7 +69,7 @@ trait Iom {
     fn check_error(&self) -> Result<(), IomError>;
 
     fn push_fifo(&self, word: &[u8]);
-    fn pop_fifo(&self, buffer: &mut [u8]);
+    fn pop_fifo(&self, buffer: &mut [u8]) -> Result<(), IomError>;
 }
 
 impl Iom for pac::iom0::RegisterBlock {
@@ -161,16 +161,23 @@ impl Iom for pac::iom0::RegisterBlock {
         }
     }
 
-    fn pop_fifo(&self, buffer: &mut [u8]) {
+    fn pop_fifo(&self, buffer: &mut [u8]) -> Result<(), IomError> {
         for b in buffer.chunks_mut(4) {
             trace!("pop fifo: wait for word ready");
+
             // Wait for FIFO to fill up and commands to complete.
+            let mut timeout_us = 10_000;
             while self.fifoptr.read().fifo1siz().bits() < 4 {
                 if self.intstat.read().cmdcmp().bit() {
                     break;
                 }
 
                 FlashDelay::delay_us(1);
+                timeout_us -= 1;
+                if timeout_us == 0 {
+                    error!("pop fifo timed out");
+                    return Err(IomError::Timeout);
+                }
             }
 
             // Read a word
@@ -180,5 +187,7 @@ impl Iom for pac::iom0::RegisterBlock {
                 *b = *w;
             }
         }
+
+        Ok(())
     }
 }

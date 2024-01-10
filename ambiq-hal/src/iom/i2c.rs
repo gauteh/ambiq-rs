@@ -347,7 +347,7 @@ where
 
         self.start_tx(buffer.len() as u16, I2cDirection::Read, false);
 
-        self.iom.pop_fifo(buffer);
+        self.iom.pop_fifo(buffer)?;
 
         self.iom.wait_transfer().ok();
 

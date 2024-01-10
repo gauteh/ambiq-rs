@@ -249,7 +249,7 @@ where
             self.iom.clear_interrupts();
 
             let mut buf = [0u8];
-            self.iom.pop_fifo(&mut buf);
+            self.iom.pop_fifo(&mut buf)?;
 
             // Check for errors
             let r = self.iom.check_error();
@@ -338,7 +338,7 @@ where
         }
 
         // Read
-        self.iom.pop_fifo(words);
+        self.iom.pop_fifo(words)?;
         trace!("spi: full-duplex: read: {:x}", &words);
 
         // Check for errors
