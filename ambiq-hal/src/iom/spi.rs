@@ -6,6 +6,7 @@ use embedded_hal::blocking::spi::Transfer;
 use embedded_hal::spi::{self, FullDuplex};
 
 use crate::gpio::{self, Mode};
+use crate::delay::FlashDelay;
 use crate::pac;
 use crate::{halc, halc::c_types::*};
 
@@ -177,9 +178,18 @@ where
             if iomi == 0 {
                 // IOM0
                 defmt::debug!("Setting up pins for IOM0");
-                halc::am_hal_gpio_pinconfig(self.sck.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_SCK);
-                halc::am_hal_gpio_pinconfig(self.mosi.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MOSI);
-                halc::am_hal_gpio_pinconfig(self.miso.pin_num() as u32, halc::g_AM_BSP_GPIO_IOM0_MISO);
+                halc::am_hal_gpio_pinconfig(
+                    self.sck.pin_num() as u32,
+                    halc::g_AM_BSP_GPIO_IOM0_SCK,
+                );
+                halc::am_hal_gpio_pinconfig(
+                    self.mosi.pin_num() as u32,
+                    halc::g_AM_BSP_GPIO_IOM0_MOSI,
+                );
+                halc::am_hal_gpio_pinconfig(
+                    self.miso.pin_num() as u32,
+                    halc::g_AM_BSP_GPIO_IOM0_MISO,
+                );
             } else {
                 unimplemented!()
             }
@@ -305,7 +315,76 @@ where
     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
     Mosi<MOSI>: MosiPin<IOM>,
     Miso<MISO>: MisoPin<IOM>,
-    Sck<SCK>: SckPin<IOM> {}
+    Sck<SCK>: SckPin<IOM>,
+{}
+
+// impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> hal::blocking::spi::Write<u8>
+//     for Spi<IOM, MOSI, MISO, SCK>
+// where
+//     IOM: Deref<Target = pac::iom0::RegisterBlock>,
+//     gpio::pin::Pin<MOSI, { Mode::Floating }>: gpio::pin::PinCfg,
+//     gpio::pin::Pin<MISO, { Mode::Floating }>: gpio::pin::PinCfg,
+//     gpio::pin::Pin<SCK, { Mode::Floating }>: gpio::pin::PinCfg,
+//     Mosi<MOSI>: MosiPin<IOM>,
+//     Miso<MISO>: MisoPin<IOM>,
+//     Sck<SCK>: SckPin<IOM>,
+// {
+//     type Error = IomError;
+
+//     fn write(&mut self, output: &[u8]) -> Result<(), Self::Error> {
+//         trace!("spi: write: writing bytes: {:x}", output);
+//         self.iom.wait_transfer().ok();
+
+//         let inten = self.iom.disable_interrupts();
+//         self.iom.clear_interrupts();
+
+//         // set Half-Duplex mode
+//         self.iom.mspicfg.write(|w| w.fulldup().clear_bit());
+
+//         let mut words = output.chunks(4);
+
+//         // Fill up FIFO before sending command.
+//         while let Some(word) = words.next() {
+//             if self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+//                 break;
+//             }
+
+//             self.iom.push_fifo(word);
+//         }
+
+//         self.start_tx(output.len() as u16, Direction::Write, false);
+
+//         // Push rest of bytes through FIFO
+//         'outer: for word in words {
+//             // Wait for FIFO to clear.
+//             while self.iom.fifoptr.read().fifo0rem().bits() < 4 {
+//                 if self.iom.intstat.read().cmdcmp().bit() {
+//                     // Command completed without emptying FIFO, not good.
+//                     break 'outer;
+//                 }
+
+//                 FlashDelay::delay_us(1);
+//             }
+
+//             // Fill FIFO while there is space
+//             self.iom.push_fifo(word);
+//             self.iom.wait_transfer().ok();
+//         }
+
+//         // Check for errors
+//         let r = self.iom.check_error();
+
+//         if r.is_err() {
+//             defmt::error!("spi: write error: {:?}", r);
+//             self.iom.reset();
+//         }
+
+//         self.iom.clear_interrupts();
+//         self.iom.enable_interrupts(inten);
+
+//         Ok(())
+//     }
+// }
 
 impl<IOM, const MOSI: usize, const MISO: usize, const SCK: usize> Transfer<u8>
     for Spi<IOM, MOSI, MISO, SCK>
@@ -327,25 +406,28 @@ where
 
         // set Full-Duplex mode
         self.iom.mspicfg.write(|w| w.fulldup().set_bit());
-        self.start_tx(words.len() as u16, Direction::Write, false);
 
         // Write
         trace!("spi: full-duplex: write: {:x}", &words);
-        self.iom.push_fifo(words);
+        for chunk in words.chunks_mut(4) {
+            self.start_tx(chunk.len() as u16, Direction::Write, false);
+            trace!("spi: full-duplex: chunk: {:x}", &chunk);
+            self.iom.push_fifo(chunk);
 
-        if self.iom.wait_transfer().is_err() {
-            self.iom.reset();
-        }
+            if self.iom.wait_transfer().is_err() {
+                self.iom.reset();
+            }
 
-        // Read
-        self.iom.pop_fifo(words)?;
-        trace!("spi: full-duplex: read: {:x}", &words);
+            // Read
+            self.iom.pop_fifo(chunk)?;
+            trace!("spi: full-duplex: read: {:x}", &chunk);
 
-        // Check for errors
-        let r = self.iom.check_error();
+            // Check for errors
+            let r = self.iom.check_error();
 
-        if r.is_err() {
-            self.iom.reset();
+            if r.is_err() {
+                self.iom.reset();
+            }
         }
 
         self.iom.clear_interrupts();
