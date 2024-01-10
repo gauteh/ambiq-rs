@@ -333,7 +333,9 @@ where
         trace!("spi: full-duplex: write: {:x}", &words);
         self.iom.push_fifo(words);
 
-        self.iom.wait_transfer().ok();
+        if self.iom.wait_transfer().is_err() {
+            self.iom.reset();
+        }
 
         // Read
         self.iom.pop_fifo(words);
