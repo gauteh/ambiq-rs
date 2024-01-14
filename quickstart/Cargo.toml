@@ -1,9 +1,8 @@
 [package]
-name = "{{ project-name }}"
+name = "quick-start-artemis"
 version = "0.1.0"
 edition = "2021"
-default-run = "{{ project-name }}"
-authors = [ "{{ authors }}" ]
+authors = [ "Gaute Hope <gauteh@met.no>" ]
 
 [dependencies]
 panic-halt = "0.2.0"
