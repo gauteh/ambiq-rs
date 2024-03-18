@@ -5,6 +5,9 @@ pub use super::pin::*;
 pub struct Pins {
     _gpio: GPIO,
 
+    /// * D8
+    pub d8: P38<{ Mode::Floating }>,
+
     /// * SCL4
     /// * TX1
     pub d9: P39<{ Mode::Floating }>,
@@ -61,6 +64,7 @@ impl Pins {
             _gpio: gpio,
             d6: Pin::new(),
             d7: Pin::new(),
+            d8: Pin::new(),
             d9: Pin::new(),
             d10: Pin::new(),
             d11: Pin::new(),
