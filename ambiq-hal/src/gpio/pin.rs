@@ -1,5 +1,5 @@
 use super::gpio_cfg;
-use crate::hal::digital::v2::{OutputPin, ToggleableOutputPin};
+use crate::hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
 use core::convert::Infallible;
 use core::marker::ConstParamTy;
 use paste::paste;
@@ -35,7 +35,8 @@ pub enum Mode {
     Floating,
     Input,
     Output,
-    AF0
+    InputOutput,
+    AF0,
 }
 
 pub struct Pin<const PINNUM: usize, const MODE: Mode> {}
@@ -115,7 +116,11 @@ where
                 Mode::Output => {
                     self.padinpen(false);
                     self.outcfg(1); // push-pull
-                },
+                }
+                Mode::InputOutput => {
+                    self.padinpen(true);
+                    self.outcfg(1);
+                }
                 Mode::AF0 => {
                     self.padfncsel(0);
                     self.padinpen(false);
@@ -156,7 +161,7 @@ where
             match d {
                 DriveStrength::D2mA => self.padstrng(false),
                 DriveStrength::D4mA => self.padstrng(true),
-                _ => () // XXX: is configured in altpadcfg
+                _ => (), // XXX: is configured in altpadcfg
             }
         });
     }
@@ -199,6 +204,95 @@ where
     }
 }
 
+impl<const P: usize> OutputPin for Pin<P, { Mode::InputOutput }>
+where
+    Pin<P, { Mode::InputOutput }>: PinCfg,
+{
+    type Error = Infallible;
+
+    fn set_low(&mut self) -> Result<(), Infallible> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wtca.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtcb.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe { reg.write(mask) });
+
+        Ok(())
+    }
+
+    fn set_high(&mut self) -> Result<(), Infallible> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wtsa.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtsb.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe { reg.write(mask) });
+
+        Ok(())
+    }
+}
+
+impl<const P: usize> InputPin for Pin<P, { Mode::Input }>
+where
+    Pin<P, { Mode::Input }>: PinCfg,
+{
+    type Error = Infallible;
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        !self.is_high()
+    }
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).rta.as_ptr(),
+                _ => (*pac::GPIO::ptr()).rtb.as_ptr(),
+            }
+        };
+
+        Ok(gpio_cfg(|| unsafe {
+            *reg & mask;
+        }) == 1)
+    }
+}
+
+impl<const P: usize> InputPin for Pin<P, { Mode::InputOutput }>
+where
+    Pin<P, { Mode::InputOutput }>: PinCfg,
+{
+    type Error = Infallible;
+
+    fn is_low(&self) -> Result<bool, Self::Error> {
+        !self.is_high()
+    }
+
+    fn is_high(&self) -> Result<bool, Self::Error> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).rta.as_ptr(),
+                _ => (*pac::GPIO::ptr()).rtb.as_ptr(),
+            }
+        };
+
+        Ok(gpio_cfg(|| unsafe {
+            *reg & mask;
+        }) == 1)
+    }
+}
+
 impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
@@ -225,9 +319,9 @@ where
 
 // Declare the pins
 // Pad number, Pad register, Cfg register
-pin!(5,  B, A);
-pin!(6,  B, A);
-pin!(7,  B, A);
+pin!(5, B, A);
+pin!(6, B, A);
+pin!(7, B, A);
 pin!(11, C, B);
 pin!(13, D, B);
 pin!(19, E, C);
@@ -241,4 +335,3 @@ pin!(42, K, F);
 pin!(43, K, F);
 pin!(48, M, G);
 pin!(49, M, G);
-
