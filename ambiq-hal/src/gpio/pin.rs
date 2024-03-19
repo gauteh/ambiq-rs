@@ -138,11 +138,31 @@ where
     pub fn into_push_pull_output(self) -> Pin<P, { Mode::Output }> {
         self.into_mode()
     }
+
+    pub fn into_input(self) -> Pin<P, { Mode::Input }> {
+        self.into_mode()
+    }
+
+    pub fn into_input_output(self) -> Pin<P, { Mode::InputOutput }> {
+        self.into_mode()
+    }
 }
 
 impl<const P: usize> Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
+{
+    /// Enable the internal pull up on the pin.
+    pub fn internal_pull_up(&mut self, on: bool) {
+        // XXX: See p. 420 for which pins support this. This should probably be in a
+        // trait that is only implemented for those pins.
+        gpio_cfg(|| unsafe { self.padpull(on) })
+    }
+}
+
+impl<const P: usize> Pin<P, { Mode::InputOutput }>
+where
+    Pin<P, { Mode::InputOutput }>: PinCfg,
 {
     /// Enable the internal pull up on the pin.
     pub fn internal_pull_up(&mut self, on: bool) {
@@ -174,32 +194,12 @@ where
     type Error = Infallible;
 
     fn set_low(&mut self) -> Result<(), Infallible> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).wtca.as_ptr(),
-                _ => (*pac::GPIO::ptr()).wtcb.as_ptr(),
-            }
-        };
-
-        gpio_cfg(|| unsafe { reg.write(mask) });
-
+        write_state(P, false);
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).wtsa.as_ptr(),
-                _ => (*pac::GPIO::ptr()).wtsb.as_ptr(),
-            }
-        };
-
-        gpio_cfg(|| unsafe { reg.write(mask) });
-
+        write_state(P, true);
         Ok(())
     }
 }
@@ -211,32 +211,12 @@ where
     type Error = Infallible;
 
     fn set_low(&mut self) -> Result<(), Infallible> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).wtca.as_ptr(),
-                _ => (*pac::GPIO::ptr()).wtcb.as_ptr(),
-            }
-        };
-
-        gpio_cfg(|| unsafe { reg.write(mask) });
-
+        write_state(P, false);
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).wtsa.as_ptr(),
-                _ => (*pac::GPIO::ptr()).wtsb.as_ptr(),
-            }
-        };
-
-        gpio_cfg(|| unsafe { reg.write(mask) });
-
+        write_state(P, true);
         Ok(())
     }
 }
@@ -248,22 +228,11 @@ where
     type Error = Infallible;
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        !self.is_high()
+        self.is_high().map(|b| !b)
     }
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).rta.as_ptr(),
-                _ => (*pac::GPIO::ptr()).rtb.as_ptr(),
-            }
-        };
-
-        Ok(gpio_cfg(|| unsafe {
-            *reg & mask;
-        }) == 1)
+        Ok(read_input_state(P))
     }
 }
 
@@ -274,23 +243,63 @@ where
     type Error = Infallible;
 
     fn is_low(&self) -> Result<bool, Self::Error> {
-        !self.is_high()
+        self.is_high().map(|b| !b)
     }
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).rta.as_ptr(),
-                _ => (*pac::GPIO::ptr()).rtb.as_ptr(),
-            }
-        };
-
-        Ok(gpio_cfg(|| unsafe {
-            *reg & mask;
-        }) == 1)
+        Ok(read_input_state(P))
     }
+}
+
+fn read_input_state(p: usize) -> bool {
+    let mask: u32 = 0b1u32 << p % 32;
+
+    let reg = unsafe {
+        match p {
+            0..=31 => (*pac::GPIO::ptr()).rda.as_ptr(),
+            32..=63 => (*pac::GPIO::ptr()).rdb.as_ptr(),
+            _ => unimplemented!(),
+        }
+    };
+
+    defmt::trace!("pin: {}: mask 0b{:b}", p, mask);
+    defmt::trace!("pin: {}: register: {}, 0b{:b}", p, reg, unsafe { *reg });
+
+    (unsafe { *reg & mask } != 0)
+}
+
+fn write_state(p: usize, val: bool) {
+    let mask: u32 = 0b1u32 << p % 32;
+
+    let reg = unsafe {
+        match p {
+            0..=31 => (*pac::GPIO::ptr()).wtsa.as_ptr(),
+            _ => (*pac::GPIO::ptr()).wtsb.as_ptr(),
+        }
+    };
+
+    gpio_cfg(|| unsafe {
+        if val {
+            *reg |= mask;
+        } else {
+            *reg &= !mask;
+        }
+    });
+}
+
+fn toggle_state(P: usize) {
+    let mask: u32 = 0b1u32 << P % 32;
+
+    let reg = unsafe {
+        match P {
+            0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
+            _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
+        }
+    };
+
+    gpio_cfg(|| unsafe {
+        *reg ^= mask;
+    });
 }
 
 impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::Output }>
@@ -300,18 +309,7 @@ where
     type Error = Infallible;
 
     fn toggle(&mut self) -> Result<(), Infallible> {
-        let mask: u32 = 0b1u32 << P % 32;
-
-        let reg = unsafe {
-            match P {
-                0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
-                _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
-            }
-        };
-
-        gpio_cfg(|| unsafe {
-            *reg ^= mask;
-        });
+        toggle_state(P);
 
         Ok(())
     }
