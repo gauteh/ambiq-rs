@@ -315,6 +315,19 @@ where
     }
 }
 
+impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::InputOutput }>
+where
+    Pin<P, { Mode::Output }>: PinCfg,
+{
+    type Error = Infallible;
+
+    fn toggle(&mut self) -> Result<(), Infallible> {
+        toggle_state(P);
+
+        Ok(())
+    }
+}
+
 // Declare the pins
 // Pad number, Pad register, Cfg register
 pin!(5, B, A);
