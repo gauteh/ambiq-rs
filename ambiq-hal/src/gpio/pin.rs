@@ -1,7 +1,8 @@
 use super::gpio_cfg;
-use crate::hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
+use crate::hal::digital::v2::{InputPin, IoPin, OutputPin, ToggleableOutputPin};
 use core::convert::Infallible;
 use core::marker::ConstParamTy;
+use embedded_hal::digital::v2::PinState;
 use paste::paste;
 
 /// The drive strength is controlled by setting registers:
@@ -112,7 +113,10 @@ where
 
             // padreg
             match NEWM {
-                Mode::Floating | Mode::Input => self.padinpen(true),
+                Mode::Floating | Mode::Input => {
+                    self.padinpen(true);
+                    self.outcfg(0);
+                }
                 Mode::Output => {
                     self.padinpen(false);
                     self.outcfg(1); // push-pull
@@ -145,6 +149,25 @@ where
 
     pub fn into_input_output(self) -> Pin<P, { Mode::InputOutput }> {
         self.into_mode()
+    }
+}
+
+impl<const P: usize, const M: Mode> IoPin<Pin<P, { Mode::Input }>, Pin<P, { Mode::Output }>>
+    for Pin<P, M>
+where
+    Pin<P, M>: PinCfg,
+    Pin<P, { Mode::Input }>: PinCfg,
+    Pin<P, { Mode::Output }>: PinCfg,
+{
+    type Error = Infallible;
+
+    fn into_input_pin(self) -> Result<Pin<P, { Mode::Input }>, Self::Error> {
+        self.into_input_pin()
+    }
+
+    fn into_output_pin(self, state: PinState) -> Result<Pin<P, { Mode::Output }>, Self::Error> {
+        write_state(P, matches!(state, PinState::High));
+        Ok(self.into_push_pull_output())
     }
 }
 
@@ -212,11 +235,15 @@ where
 
     fn set_low(&mut self) -> Result<(), Infallible> {
         write_state(P, false);
+        defmt::trace!("re-configure for output..");
+        let _p = Pin::<P, { Mode::InputOutput }> {}.into_push_pull_output(); // XXX: Re-configure as input
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
         write_state(P, true);
+        // defmt::trace!("re-configure for output..");
+        // let _p = Pin::<P, { Mode::InputOutput }>{}.into_push_pull_output(); // XXX: Re-configure as input
         Ok(())
     }
 }
@@ -247,6 +274,8 @@ where
     }
 
     fn is_high(&self) -> Result<bool, Self::Error> {
+        // defmt::trace!("re-configure for input..");
+        // let _p = Pin::<P, { Mode::InputOutput }>{}.into_input(); // XXX: Re-configure as input
         Ok(read_input_state(P))
     }
 }
