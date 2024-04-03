@@ -7,26 +7,34 @@ use core::ptr;
 use embedded_hal as hal;
 use hal::serial::{Read, Write};
 
-pub struct Uart0 {
+pub struct Uart0<const TX: usize, const RX: usize>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     /// Pointer to UART handle for Ambiq SDK.
     ph_uart: *mut c_void,
 
     uart: pac::UART0,
 
-    /// Uart poins
-    tx: gpio::pin::P48<{ Mode::Floating }>,
-    rx: gpio::pin::P49<{ Mode::Floating }>,
+    /// Uart pins
+    tx: gpio::pin::Pin<TX, { Mode::Floating }>,
+    rx: gpio::pin::Pin<RX, { Mode::Floating }>,
 }
 
-unsafe impl Sync for Uart0 {}
-unsafe impl Send for Uart0 {}
+// unsafe impl Sync for Uart0 {}
+// unsafe impl Send for Uart0 {}
 
-impl Uart0 {
+impl<const TX: usize, const RX: usize> Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     pub fn new(
         uart: pac::UART0,
         tx: gpio::pin::P48<{ Mode::Floating }>,
         rx: gpio::pin::P49<{ Mode::Floating }>,
-    ) -> Uart0 {
+    ) -> Uart0<48, 49> {
         let mut ph_uart = ptr::null_mut();
 
         let uart_config = halc::am_hal_uart_config_t {
@@ -69,7 +77,11 @@ impl Uart0 {
     }
 }
 
-impl Drop for Uart0 {
+impl<const TX: usize, const RX: usize> Drop for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     fn drop(&mut self) {
         unsafe {
             // Power down the UART, and surrender the handle.
@@ -87,7 +99,11 @@ impl Drop for Uart0 {
     }
 }
 
-impl Read<u8> for Uart0 {
+impl<const TX: usize, const RX: usize> Read<u8> for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = ();
 
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
@@ -108,7 +124,11 @@ impl Read<u8> for Uart0 {
     }
 }
 
-impl Write<u8> for Uart0 {
+impl<const TX: usize, const RX: usize> Write<u8> for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = !;
 
     fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {
@@ -133,9 +153,18 @@ impl Write<u8> for Uart0 {
     }
 }
 
-impl hal::blocking::serial::write::Default<u8> for Uart0 {}
+impl<const TX: usize, const RX: usize> hal::blocking::serial::write::Default<u8> for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+}
 
-impl ufmt::uWrite for Uart0 {
+impl<const TX: usize, const RX: usize> ufmt::uWrite for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
     type Error = !;
 
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
