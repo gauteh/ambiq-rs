@@ -25,55 +25,76 @@ where
 // unsafe impl Sync for Uart0 {}
 // unsafe impl Send for Uart0 {}
 
+fn init_uart<const TTX: usize, const RRX: usize>(
+    uart: pac::UART0,
+    tx: gpio::pin::Pin<TTX, { Mode::Floating }>,
+    rx: gpio::pin::Pin<RRX, { Mode::Floating }>,
+) -> Uart0<TTX, RRX>
+where
+    gpio::pin::Pin<TTX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RRX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+    let mut ph_uart = ptr::null_mut();
+
+    let uart_config = halc::am_hal_uart_config_t {
+        ui32BaudRate: 115200,
+        ui32DataBits: halc::cAM_HAL_UART_DATA_BITS_8,
+        ui32Parity: halc::cAM_HAL_UART_PARITY_NONE,
+        ui32StopBits: halc::cAM_HAL_UART_ONE_STOP_BIT,
+        ui32FlowControl: halc::cAM_HAL_UART_FLOW_CTRL_NONE,
+
+        //
+        // Set TX and RX FIFOs to interrupt at half-full.
+        //
+        ui32FifoLevels: (halc::cAM_HAL_UART_TX_FIFO_1_2 | halc::cAM_HAL_UART_RX_FIFO_1_2),
+
+        //
+        // Buffers
+        //
+        // Do we need 'em? What are they good for!
+        pui8TxBuffer: ptr::null_mut(),
+        ui32TxBufferSize: 0,
+        pui8RxBuffer: ptr::null_mut(),
+        ui32RxBufferSize: 0,
+    };
+
+    unsafe {
+        halc::am_hal_uart_initialize(0, &mut ph_uart);
+        halc::am_hal_uart_power_control(ph_uart, 0, false); // 0 = SYSTRL_WAKE
+        halc::am_hal_uart_configure(ph_uart, &uart_config);
+
+        halc::am_hal_gpio_pinconfig(tx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_TX);
+        halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_RX);
+    }
+
+    Uart0 {
+        ph_uart,
+        uart,
+        tx,
+        rx,
+    }
+}
+
 impl<const TX: usize, const RX: usize> Uart0<TX, RX>
 where
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
+    #[warn(deprecated)]
     pub fn new(
         uart: pac::UART0,
         tx: gpio::pin::P48<{ Mode::Floating }>,
         rx: gpio::pin::P49<{ Mode::Floating }>,
     ) -> Uart0<48, 49> {
-        let mut ph_uart = ptr::null_mut();
+        Self::new_48_49(uart, tx, rx)
+    }
 
-        let uart_config = halc::am_hal_uart_config_t {
-            ui32BaudRate: 115200,
-            ui32DataBits: halc::cAM_HAL_UART_DATA_BITS_8,
-            ui32Parity: halc::cAM_HAL_UART_PARITY_NONE,
-            ui32StopBits: halc::cAM_HAL_UART_ONE_STOP_BIT,
-            ui32FlowControl: halc::cAM_HAL_UART_FLOW_CTRL_NONE,
-
-            //
-            // Set TX and RX FIFOs to interrupt at half-full.
-            //
-            ui32FifoLevels: (halc::cAM_HAL_UART_TX_FIFO_1_2 | halc::cAM_HAL_UART_RX_FIFO_1_2),
-
-            //
-            // Buffers
-            //
-            // Do we need 'em? What are they good for!
-            pui8TxBuffer: ptr::null_mut(),
-            ui32TxBufferSize: 0,
-            pui8RxBuffer: ptr::null_mut(),
-            ui32RxBufferSize: 0,
-        };
-
-        unsafe {
-            halc::am_hal_uart_initialize(0, &mut ph_uart);
-            halc::am_hal_uart_power_control(ph_uart, 0, false); // 0 = SYSTRL_WAKE
-            halc::am_hal_uart_configure(ph_uart, &uart_config);
-
-            halc::am_hal_gpio_pinconfig(tx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_TX);
-            halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_RX);
-        }
-
-        Uart0 {
-            ph_uart,
-            uart,
-            tx,
-            rx,
-        }
+    pub fn new_48_49(
+        uart: pac::UART0,
+        tx: gpio::pin::P48<{ Mode::Floating }>,
+        rx: gpio::pin::P49<{ Mode::Floating }>,
+    ) -> Uart0<48, 49> {
+        init_uart(uart, tx, rx)
     }
 }
 
