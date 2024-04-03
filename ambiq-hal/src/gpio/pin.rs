@@ -143,6 +143,11 @@ where
         self.into_mode()
     }
 
+    pub fn into_push_pull_output_val(self, high: bool) -> Pin<P, { Mode::Output }> {
+        write_state(P, high);
+        self.into_mode()
+    }
+
     pub fn into_input(self) -> Pin<P, { Mode::Input }> {
         self.into_mode()
     }
@@ -162,7 +167,7 @@ where
     type Error = Infallible;
 
     fn into_input_pin(self) -> Result<Pin<P, { Mode::Input }>, Self::Error> {
-        self.into_input_pin()
+        Ok(self.into_input())
     }
 
     fn into_output_pin(self, state: PinState) -> Result<Pin<P, { Mode::Output }>, Self::Error> {
@@ -192,6 +197,15 @@ where
         // XXX: See p. 420 for which pins support this. This should probably be in a
         // trait that is only implemented for those pins.
         gpio_cfg(|| unsafe { self.padpull(on) })
+    }
+
+    pub fn open_drain(&mut self) {
+        gpio_cfg(|| unsafe {
+            if P == 40 {
+                // self.padfncsel(4);
+            }
+            self.outcfg(2);
+        });
     }
 }
 
@@ -235,15 +249,11 @@ where
 
     fn set_low(&mut self) -> Result<(), Infallible> {
         write_state(P, false);
-        defmt::trace!("re-configure for output..");
-        let _p = Pin::<P, { Mode::InputOutput }> {}.into_push_pull_output(); // XXX: Re-configure as input
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
         write_state(P, true);
-        // defmt::trace!("re-configure for output..");
-        // let _p = Pin::<P, { Mode::InputOutput }>{}.into_push_pull_output(); // XXX: Re-configure as input
         Ok(())
     }
 }
@@ -274,8 +284,6 @@ where
     }
 
     fn is_high(&self) -> Result<bool, Self::Error> {
-        // defmt::trace!("re-configure for input..");
-        // let _p = Pin::<P, { Mode::InputOutput }>{}.into_input(); // XXX: Re-configure as input
         Ok(read_input_state(P))
     }
 }
