@@ -131,6 +131,21 @@ where
     }
 }
 
+impl<const TX: usize, const RX: usize> Uart1<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+    pub fn new_12_13(
+        uart: pac::UART1,
+        tx: gpio::pin::P12<{ Mode::Floating }>,
+        rx: gpio::pin::P13<{ Mode::Floating }>,
+        baudrate: u32,
+    ) -> Uart1<12, 13> {
+        init_uart(uart, tx, rx, baudrate)
+    }
+}
+
 impl<UART, const TX: usize, const RX: usize> Drop for Uart<UART, TX, RX>
 where
     UART: Deref<Target = pac::uart0::RegisterBlock>,

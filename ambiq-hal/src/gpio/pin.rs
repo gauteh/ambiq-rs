@@ -371,6 +371,7 @@ pin!(5, B, A);
 pin!(6, B, A);
 pin!(7, B, A);
 pin!(11, C, B);
+pin!(12, D, B);
 pin!(13, D, B);
 pin!(19, E, C);
 pin!(25, G, D);
