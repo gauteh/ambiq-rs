@@ -3,19 +3,24 @@
 use crate::pac;
 use crate::{gpio, gpio::pin::Mode};
 use crate::{halc, halc::c_types::*};
+use core::ops::Deref;
 use core::ptr;
 use embedded_hal as hal;
 use hal::serial::{Read, Write};
 
-pub struct Uart0<const TX: usize, const RX: usize>
+pub type Uart0<const TX: usize, const RX: usize> = Uart<pac::UART0, TX, RX>;
+pub type Uart1<const TX: usize, const RX: usize> = Uart<pac::UART1, TX, RX>;
+
+pub struct Uart<UART, const TX: usize, const RX: usize>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
     /// Pointer to UART handle for Ambiq SDK.
     ph_uart: *mut c_void,
 
-    uart: pac::UART0,
+    uart: UART,
 
     /// Uart pins
     tx: gpio::pin::Pin<TX, { Mode::Floating }>,
@@ -25,19 +30,46 @@ where
 // unsafe impl Sync for Uart0 {}
 // unsafe impl Send for Uart0 {}
 
-fn init_uart<const TTX: usize, const RRX: usize>(
-    uart: pac::UART0,
+trait UartInit {
+    fn module() -> u32;
+}
+
+impl<const TX: usize, const RX: usize> UartInit for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+    fn module() -> u32 {
+        0
+    }
+}
+
+impl<const TX: usize, const RX: usize> UartInit for Uart1<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+    fn module() -> u32 {
+        1
+    }
+}
+
+fn init_uart<UART, const TTX: usize, const RRX: usize>(
+    uart: UART,
     tx: gpio::pin::Pin<TTX, { Mode::Floating }>,
     rx: gpio::pin::Pin<RRX, { Mode::Floating }>,
-) -> Uart0<TTX, RRX>
+    baudrate: u32,
+) -> Uart<UART, TTX, RRX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
+    Uart<UART, TTX, RRX>: UartInit,
     gpio::pin::Pin<TTX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RRX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
     let mut ph_uart = ptr::null_mut();
 
     let uart_config = halc::am_hal_uart_config_t {
-        ui32BaudRate: 115200,
+        ui32BaudRate: baudrate,
         ui32DataBits: halc::cAM_HAL_UART_DATA_BITS_8,
         ui32Parity: halc::cAM_HAL_UART_PARITY_NONE,
         ui32StopBits: halc::cAM_HAL_UART_ONE_STOP_BIT,
@@ -59,7 +91,7 @@ where
     };
 
     unsafe {
-        halc::am_hal_uart_initialize(0, &mut ph_uart);
+        halc::am_hal_uart_initialize(<Uart<UART, TTX, RRX> as UartInit>::module(), &mut ph_uart);
         halc::am_hal_uart_power_control(ph_uart, 0, false); // 0 = SYSTRL_WAKE
         halc::am_hal_uart_configure(ph_uart, &uart_config);
 
@@ -67,7 +99,7 @@ where
         halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_RX);
     }
 
-    Uart0 {
+    Uart {
         ph_uart,
         uart,
         tx,
@@ -86,20 +118,22 @@ where
         tx: gpio::pin::P48<{ Mode::Floating }>,
         rx: gpio::pin::P49<{ Mode::Floating }>,
     ) -> Uart0<48, 49> {
-        Self::new_48_49(uart, tx, rx)
+        Self::new_48_49(uart, tx, rx, 115200)
     }
 
     pub fn new_48_49(
         uart: pac::UART0,
         tx: gpio::pin::P48<{ Mode::Floating }>,
         rx: gpio::pin::P49<{ Mode::Floating }>,
+        baudrate: u32,
     ) -> Uart0<48, 49> {
-        init_uart(uart, tx, rx)
+        init_uart(uart, tx, rx, baudrate)
     }
 }
 
-impl<const TX: usize, const RX: usize> Drop for Uart0<TX, RX>
+impl<UART, const TX: usize, const RX: usize> Drop for Uart<UART, TX, RX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
@@ -120,8 +154,9 @@ where
     }
 }
 
-impl<const TX: usize, const RX: usize> Read<u8> for Uart0<TX, RX>
+impl<UART, const TX: usize, const RX: usize> Read<u8> for Uart<UART, TX, RX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
@@ -145,8 +180,9 @@ where
     }
 }
 
-impl<const TX: usize, const RX: usize> Write<u8> for Uart0<TX, RX>
+impl<UART, const TX: usize, const RX: usize> Write<u8> for Uart<UART, TX, RX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
@@ -174,15 +210,18 @@ where
     }
 }
 
-impl<const TX: usize, const RX: usize> hal::blocking::serial::write::Default<u8> for Uart0<TX, RX>
+impl<UART, const TX: usize, const RX: usize> hal::blocking::serial::write::Default<u8>
+    for Uart<UART, TX, RX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
 }
 
-impl<const TX: usize, const RX: usize> ufmt::uWrite for Uart0<TX, RX>
+impl<UART, const TX: usize, const RX: usize> ufmt::uWrite for Uart<UART, TX, RX>
 where
+    UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
