@@ -32,6 +32,46 @@ where
 
 trait UartInit {
     fn module() -> u32;
+
+    fn ph_uart(&mut self) -> *mut c_void;
+}
+
+pub trait UartConf {
+    fn set_baudrate(&mut self, baudrate: u32) {}
+}
+
+impl<UART> UartConf for UART
+where
+    UART: UartInit,
+{
+    fn set_baudrate(&mut self, baudrate: u32) {
+        defmt::info!("Re-configuring baudrate for module {} to {}", UART::module(), baudrate);
+        let uart_config = halc::am_hal_uart_config_t {
+            ui32BaudRate: baudrate,
+            ui32DataBits: halc::cAM_HAL_UART_DATA_BITS_8,
+            ui32Parity: halc::cAM_HAL_UART_PARITY_NONE,
+            ui32StopBits: halc::cAM_HAL_UART_ONE_STOP_BIT,
+            ui32FlowControl: halc::cAM_HAL_UART_FLOW_CTRL_NONE,
+
+            //
+            // Set TX and RX FIFOs to interrupt at half-full.
+            //
+            ui32FifoLevels: (halc::cAM_HAL_UART_TX_FIFO_1_2 | halc::cAM_HAL_UART_RX_FIFO_1_2),
+
+            //
+            // Buffers
+            //
+            // Do we need 'em? What are they good for!
+            pui8TxBuffer: ptr::null_mut(),
+            ui32TxBufferSize: 0,
+            pui8RxBuffer: ptr::null_mut(),
+            ui32RxBufferSize: 0,
+        };
+
+        unsafe {
+            halc::am_hal_uart_configure(self.ph_uart(), &uart_config);
+        }
+    }
 }
 
 impl<const TX: usize, const RX: usize> UartInit for Uart0<TX, RX>
@@ -42,6 +82,10 @@ where
     fn module() -> u32 {
         0
     }
+
+    fn ph_uart(&mut self) -> *mut c_void {
+        self.ph_uart
+    }
 }
 
 impl<const TX: usize, const RX: usize> UartInit for Uart1<TX, RX>
@@ -51,6 +95,10 @@ where
 {
     fn module() -> u32 {
         1
+    }
+
+    fn ph_uart(&mut self) -> *mut c_void {
+        self.ph_uart
     }
 }
 
@@ -131,19 +179,27 @@ where
     }
 }
 
+pub fn new_12_13(
+    uart: pac::UART1,
+    tx: gpio::pin::P12<{ Mode::Floating }>,
+    rx: gpio::pin::P13<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart1<12, 13> {
+    init_uart(uart, tx, rx, baudrate)
+}
 impl<const TX: usize, const RX: usize> Uart1<TX, RX>
 where
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
-    pub fn new_12_13(
-        uart: pac::UART1,
-        tx: gpio::pin::P12<{ Mode::Floating }>,
-        rx: gpio::pin::P13<{ Mode::Floating }>,
-        baudrate: u32,
-    ) -> Uart1<12, 13> {
-        init_uart(uart, tx, rx, baudrate)
-    }
+    // pub fn new_12_13(
+    //     uart: pac::UART1,
+    //     tx: gpio::pin::P12<{ Mode::Floating }>,
+    //     rx: gpio::pin::P13<{ Mode::Floating }>,
+    //     baudrate: u32,
+    // ) -> Uart1<12, 13> {
+    //     init_uart(uart, tx, rx, baudrate)
+    // }
 }
 
 impl<UART, const TX: usize, const RX: usize> Drop for Uart<UART, TX, RX>
@@ -201,7 +257,7 @@ where
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
-    type Error = !;
+    type Error = ();
 
     fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {
         if self.uart.fr.read().txff().bit_is_set() {
@@ -240,7 +296,7 @@ where
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
 {
-    type Error = !;
+    type Error = ();
 
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
         for b in s.as_bytes().iter() {

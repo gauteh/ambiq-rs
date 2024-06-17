@@ -54,7 +54,7 @@ pub mod prelude {
     pub use hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
 
     #[cfg(feature = "ambiq-sdk")]
-    pub use halc;
+    pub use {halc, crate::uart::UartConf};
 
     #[cfg(feature = "ambiq-sdk")]
     pub use halc::c_types::*;
