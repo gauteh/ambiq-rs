@@ -10,7 +10,7 @@ use cortex_m::peripheral::SYST;
 
 use crate::clock;
 use crate::time::Hertz;
-use hal::blocking::delay::{DelayMs, DelayUs};
+use hal::delay::DelayNs;
 use pac::CLKGEN;
 
 /// System timer (SysTick) as a delay provider
@@ -48,30 +48,12 @@ impl Delay {
     }
 }
 
-impl DelayMs<u32> for Delay {
-    fn delay_ms(&mut self, ms: u32) {
-        self.delay_us(ms * 1_000);
-    }
-}
-
-impl DelayMs<u16> for Delay {
-    fn delay_ms(&mut self, ms: u16) {
-        self.delay_ms(ms as u32);
-    }
-}
-
-impl DelayMs<u8> for Delay {
-    fn delay_ms(&mut self, ms: u8) {
-        self.delay_ms(ms as u32);
-    }
-}
-
-impl DelayUs<u32> for Delay {
-    fn delay_us(&mut self, us: u32) {
+impl DelayNs for Delay {
+    fn delay_ns(&mut self, ns: u32) {
         // The SysTick Reload Value register supports values between 1 and 0x00FFFFFF.
         const MAX_RVR: u32 = 0x00FF_FFFF;
 
-        let mut total_rvr = us * (self.sysclock.0 / 1_000_000);
+        let mut total_rvr = ns * (self.sysclock.0 / 1_000_000_000);
 
         while total_rvr != 0 {
             let current_rvr = if total_rvr <= MAX_RVR {
@@ -91,18 +73,6 @@ impl DelayUs<u32> for Delay {
 
             self.syst.disable_counter();
         }
-    }
-}
-
-impl DelayUs<u16> for Delay {
-    fn delay_us(&mut self, us: u16) {
-        self.delay_us(us as u32)
-    }
-}
-
-impl DelayUs<u8> for Delay {
-    fn delay_us(&mut self, us: u8) {
-        self.delay_us(us as u32)
     }
 }
 
@@ -167,8 +137,8 @@ pub mod flash {
         }
     }
 
-    impl DelayUs<u32> for FlashDelay {
-        fn delay_us(&mut self, us: u32) {
+    impl DelayNs for FlashDelay {
+        fn delay_ns(&mut self, ns: u32) {
             // Get clock frequency.
             let clkgen = unsafe { &*CLKGEN::ptr() };
             let sysclock = match clkgen.cctrl.read().coresel().variant() {
@@ -182,30 +152,11 @@ pub mod flash {
                 }
             };
 
-            let cycles = us * (sysclock.0 / 3_000_000);
+            let cycles = ns * (sysclock.0 / 3_000_000_000);
 
             unsafe {
                 halc::am_hal_flash_delay(cycles);
             }
-        }
-    }
-
-    impl DelayUs<u16> for FlashDelay {
-        fn delay_us(&mut self, us: u16) {
-            self.delay_us(us as u32)
-        }
-    }
-
-    impl DelayUs<u8> for FlashDelay {
-        fn delay_us(&mut self, us: u8) {
-            self.delay_us(us as u32)
-        }
-    }
-
-    impl<T> DelayMs<T> for FlashDelay where T: Into<u32> {
-        fn delay_ms(&mut self, us: T) {
-            let us = us.into();
-            DelayUs::<u32>::delay_us(self, us * 1000);
         }
     }
 }
