@@ -5,6 +5,10 @@ pub use super::pin::*;
 pub struct Pins {
     _gpio: GPIO,
 
+    /// * A0
+    /// * RX1
+    pub a0: P13<{ Mode::Floating }>,
+
     /// * D8
     pub d8: P38<{ Mode::Floating }>,
 
@@ -26,6 +30,10 @@ pub struct Pins {
 
     /// * MISO0 (SPI0)
     pub d13: P6<{ Mode::Floating }>,
+
+    /// * A16
+    /// * TX1
+    pub a16: P12<{ Mode::Floating }>,
 
     /// * USART0 TX (Serial-over-USB)
     pub tx0: P48<{ Mode::Floating }>,
@@ -62,6 +70,7 @@ impl Pins {
     pub fn new(gpio: GPIO) -> Pins {
         Pins {
             _gpio: gpio,
+            a0: Pin::new(),
             d6: Pin::new(),
             d7: Pin::new(),
             d8: Pin::new(),
@@ -70,6 +79,7 @@ impl Pins {
             d11: Pin::new(),
             d12: Pin::new(),
             d13: Pin::new(),
+            a16: Pin::new(),
             d17: Pin::new(),
             d18: Pin::new(),
             d19: Pin::new(),
