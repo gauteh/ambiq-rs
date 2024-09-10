@@ -1,8 +1,7 @@
 use super::gpio_cfg;
-use crate::hal::digital::v2::{InputPin, IoPin, OutputPin, ToggleableOutputPin};
+use crate::hal::digital::{InputPin, OutputPin, StatefulOutputPin, ErrorType};
 use core::convert::Infallible;
 use core::marker::ConstParamTy;
-use embedded_hal::digital::v2::PinState;
 use paste::paste;
 
 /// The drive strength is controlled by setting registers:
@@ -157,25 +156,6 @@ where
     }
 }
 
-impl<const P: usize, const M: Mode> IoPin<Pin<P, { Mode::Input }>, Pin<P, { Mode::Output }>>
-    for Pin<P, M>
-where
-    Pin<P, M>: PinCfg,
-    Pin<P, { Mode::Input }>: PinCfg,
-    Pin<P, { Mode::Output }>: PinCfg,
-{
-    type Error = Infallible;
-
-    fn into_input_pin(self) -> Result<Pin<P, { Mode::Input }>, Self::Error> {
-        Ok(self.into_input())
-    }
-
-    fn into_output_pin(self, state: PinState) -> Result<Pin<P, { Mode::Output }>, Self::Error> {
-        write_state(P, matches!(state, PinState::High));
-        Ok(self.into_push_pull_output())
-    }
-}
-
 impl<const P: usize> Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
@@ -224,12 +204,15 @@ where
     }
 }
 
+impl<const P: usize, const M: Mode> ErrorType for Pin<P, M>
+{
+    type Error = Infallible;
+}
+
 impl<const P: usize> OutputPin for Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
 {
-    type Error = Infallible;
-
     fn set_low(&mut self) -> Result<(), Infallible> {
         write_state(P, false);
         Ok(())
@@ -245,8 +228,6 @@ impl<const P: usize> OutputPin for Pin<P, { Mode::InputOutput }>
 where
     Pin<P, { Mode::InputOutput }>: PinCfg,
 {
-    type Error = Infallible;
-
     fn set_low(&mut self) -> Result<(), Infallible> {
         write_state(P, false);
         Ok(())
@@ -262,13 +243,11 @@ impl<const P: usize> InputPin for Pin<P, { Mode::Input }>
 where
     Pin<P, { Mode::Input }>: PinCfg,
 {
-    type Error = Infallible;
-
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         self.is_high().map(|b| !b)
     }
 
-    fn is_high(&self) -> Result<bool, Self::Error> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(read_input_state(P))
     }
 }
@@ -277,13 +256,11 @@ impl<const P: usize> InputPin for Pin<P, { Mode::InputOutput }>
 where
     Pin<P, { Mode::InputOutput }>: PinCfg,
 {
-    type Error = Infallible;
-
-    fn is_low(&self) -> Result<bool, Self::Error> {
+    fn is_low(&mut self) -> Result<bool, Self::Error> {
         self.is_high().map(|b| !b)
     }
 
-    fn is_high(&self) -> Result<bool, Self::Error> {
+    fn is_high(&mut self) -> Result<bool, Self::Error> {
         Ok(read_input_state(P))
     }
 }
@@ -339,11 +316,26 @@ fn toggle_state(P: usize) {
     });
 }
 
-impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::Output }>
+impl<const P: usize> StatefulOutputPin for Pin<P, { Mode::Output }>
 where
     Pin<P, { Mode::Output }>: PinCfg,
 {
-    type Error = Infallible;
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
+            }
+        };
+
+        Ok(unsafe { *reg & mask != 0 })
+    }
+
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        self.is_set_high().map(|b| !b)
+    }
 
     fn toggle(&mut self) -> Result<(), Infallible> {
         toggle_state(P);
@@ -352,11 +344,26 @@ where
     }
 }
 
-impl<const P: usize> ToggleableOutputPin for Pin<P, { Mode::InputOutput }>
+impl<const P: usize> StatefulOutputPin for Pin<P, { Mode::InputOutput }>
 where
-    Pin<P, { Mode::Output }>: PinCfg,
+    Pin<P, { Mode::InputOutput }>: PinCfg,
 {
-    type Error = Infallible;
+    fn is_set_high(&mut self) -> Result<bool, Self::Error> {
+        let mask: u32 = 0b1u32 << P % 32;
+
+        let reg = unsafe {
+            match P {
+                0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
+                _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
+            }
+        };
+
+        Ok(unsafe { *reg & mask != 0 })
+    }
+
+    fn is_set_low(&mut self) -> Result<bool, Self::Error> {
+        self.is_set_high().map(|b| !b)
+    }
 
     fn toggle(&mut self) -> Result<(), Infallible> {
         toggle_state(P);

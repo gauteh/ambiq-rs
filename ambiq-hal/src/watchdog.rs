@@ -1,5 +1,4 @@
 use crate::pac::{wdt, WDT};
-use embedded_hal::watchdog;
 
 pub struct Watchdog {
     wdt: WDT,
@@ -27,7 +26,7 @@ impl Watchdog {
     /// Start the watchdog.
     pub fn start(&mut self) {
         self.wdt.cfg.modify(|_, w| w.wdten().set_bit());
-        watchdog::Watchdog::feed(self);
+        self.feed();
 
         // Seems like there's a HW-bug which requires this (from C-HAL). Should just read `0`.
         self.wdt.rstrt.read().bits();
@@ -44,12 +43,11 @@ impl Watchdog {
     pub fn halt(&mut self) {
         self.wdt.cfg.modify(|_, w| w.wdten().clear_bit());
     }
-}
 
-impl watchdog::Watchdog for Watchdog {
-    fn feed(&mut self) {
+    pub fn feed(&mut self) {
         self.wdt
             .rstrt
             .write(|w| w.rstrt().variant(wdt::rstrt::RSTRT_A::KEYVALUE));
     }
 }
+

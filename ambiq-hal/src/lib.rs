@@ -50,8 +50,7 @@ pub mod iom;
 pub use iom::{i2c, spi};
 
 pub mod prelude {
-    pub use hal::prelude::*;
-    pub use hal::digital::v2::{InputPin, OutputPin, ToggleableOutputPin};
+    pub use hal::digital::{InputPin, OutputPin, StatefulOutputPin};
 
     #[cfg(feature = "ambiq-sdk")]
     pub use halc;

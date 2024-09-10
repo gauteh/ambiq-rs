@@ -12,7 +12,7 @@ use core::ops::Deref;
 use core::ptr;
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
-use embedded_hal::blocking::i2c::*;
+use embedded_hal::i2c::{self, SevenBitAddress, Operation};
 
 use crate::gpio::{self, Mode};
 use crate::delay::FlashDelay;
@@ -286,48 +286,10 @@ where
 
         r
     }
-}
 
-impl<IOM, const SDA: usize, const SCL: usize> Drop for I2c<IOM, SDA, SCL>
-where
-    IOM: Deref<Target = pac::iom0::RegisterBlock>,
-    Sda<SDA>: SdaPin<IOM>,
-    Scl<SCL>: SclPin<IOM>,
-{
-    fn drop(&mut self) {
-        unsafe {
-            halc::am_hal_iom_uninitialize(self.phiom);
-            self.phiom = ptr::null_mut();
-        }
-    }
-}
 
-impl<IOM, const SDA: usize, const SCL: usize> Write<SevenBitAddress> for I2c<IOM, SDA, SCL>
-where
-    IOM: Deref<Target = pac::iom0::RegisterBlock>,
-    Sda<SDA>: SdaPin<IOM>,
-    Scl<SCL>: SclPin<IOM>,
-    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
-    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
-{
-    type Error = I2cError;
 
-    fn write(&mut self, addr: u8, output: &[u8]) -> Result<(), Self::Error> {
-        self.write(addr, output, false)
-    }
-}
-
-impl<IOM, const SDA: usize, const SCL: usize> Read<SevenBitAddress> for I2c<IOM, SDA, SCL>
-where
-    IOM: Deref<Target = pac::iom0::RegisterBlock>,
-    Sda<SDA>: SdaPin<IOM>,
-    Scl<SCL>: SclPin<IOM>,
-    gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
-    gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
-{
-    type Error = I2cError;
-
-    fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), Self::Error> {
+    fn read(&mut self, address: u8, buffer: &mut [u8]) -> Result<(), I2cError> {
         trace!(
             "i2c: reading: addr = 0x{:02x}, len = {}",
             address,
@@ -365,7 +327,21 @@ where
     }
 }
 
-impl<IOM, const SDA: usize, const SCL: usize> WriteRead<SevenBitAddress> for I2c<IOM, SDA, SCL>
+impl<IOM, const SDA: usize, const SCL: usize> Drop for I2c<IOM, SDA, SCL>
+where
+    IOM: Deref<Target = pac::iom0::RegisterBlock>,
+    Sda<SDA>: SdaPin<IOM>,
+    Scl<SCL>: SclPin<IOM>,
+{
+    fn drop(&mut self) {
+        unsafe {
+            halc::am_hal_iom_uninitialize(self.phiom);
+            self.phiom = ptr::null_mut();
+        }
+    }
+}
+
+impl<IOM, const SDA: usize, const SCL: usize> i2c::I2c<SevenBitAddress> for I2c<IOM, SDA, SCL>
 where
     IOM: Deref<Target = pac::iom0::RegisterBlock>,
     Sda<SDA>: SdaPin<IOM>,
@@ -373,7 +349,18 @@ where
     gpio::pin::Pin<SCL, { Mode::Floating }>: gpio::pin::PinCfg,
     gpio::pin::Pin<SDA, { Mode::Floating }>: gpio::pin::PinCfg,
 {
-    type Error = I2cError;
+    fn transaction(
+        &mut self,
+        address: SevenBitAddress,
+        operations: &mut [Operation<'_>]
+    ) -> Result<(), Self::Error> {
+        for op in operations {
+            match op {
+                Operation::Read(buf) => self.read(address, buf)?,
+                Operation::Write(buf) => self.write(address, buf, false)?,
+            }
+        }
+    }
 
     fn write_read(
         &mut self,
