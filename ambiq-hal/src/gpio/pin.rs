@@ -120,6 +120,18 @@ macro_rules! pin {
     };
 }
 
+/// Enable GPIO interrupts globally, they must now be configured for indvidual pads.
+pub fn enable_gpio_interrupts() {
+    unsafe {
+        pac::NVIC::unmask(pac::Interrupt::GPIO);
+    }
+}
+
+/// Disable GPIO interrupts globally.
+pub fn disable_gpio_interrupts() {
+    pac::NVIC::mask(pac::Interrupt::GPIO);
+}
+
 impl<const P: usize> Pin<P, { Mode::Floating }> {
     pub fn new() -> Self {
         Self {}
@@ -202,7 +214,7 @@ where
         (unsafe { *reg & mask } != 0)
     }
 
-    /// Enable interrupts for this pin. Remember to also [configure it](`Pin::configure_interrupt`).
+    /// Enable interrupts for this pin. Remember to [enable gpio interrupts globally](`enable_gpio_interrupts`) also [configure it](`Pin::configure_interrupt`).
     pub fn enable_interrupt(&mut self) {
         let mask = interrupt_mask(self.index());
 
