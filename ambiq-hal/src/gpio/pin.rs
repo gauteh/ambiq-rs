@@ -5,6 +5,17 @@ use core::marker::ConstParamTy;
 use embedded_hal::digital::v2::PinState;
 use paste::paste;
 
+/// Interrupt trigger options.
+///
+/// Table 603, p. 426.
+#[derive(PartialEq, Eq)]
+pub enum InterruptOpt {
+    LowToHigh,
+    HighToLow,
+    Disabled,
+    Any,
+}
+
 /// The drive strength is controlled by setting registers:
 /// ALTPADCFGy_PADn_DS1 and PADREGy_PADnSTRNG.
 ///
@@ -49,6 +60,11 @@ pub trait PinCfg {
     unsafe fn padstrng(&mut self, high: bool);
 
     unsafe fn outcfg(&mut self, c: u8);
+
+    unsafe fn incfg(&mut self, f: bool);
+    unsafe fn intd(&mut self, f: bool);
+
+    fn index(&self) -> usize;
 }
 
 macro_rules! pin {
@@ -82,6 +98,22 @@ macro_rules! pin {
                 unsafe fn outcfg(&mut self, f: u8) {
                     (*pac::GPIO::ptr()).[<cfg $cfgreg:lower>]
                         .write(|p| p.[< gpio $id outcfg >]().bits(f))
+                }
+
+                /// Interrupt cfg.
+                unsafe fn incfg(&mut self, f: bool) {
+                    (*pac::GPIO::ptr()).[<cfg $cfgreg:lower>]
+                        .write(|p| p.[< gpio $id incfg >]().bit(f))
+                }
+
+                /// Interrupt cfg.
+                unsafe fn intd(&mut self, f: bool) {
+                    (*pac::GPIO::ptr()).[<cfg $cfgreg:lower>]
+                        .write(|p| p.[< gpio $id intd >]().bit(f))
+                }
+
+                fn index(&self) -> usize {
+                    $id
                 }
             }
         }
@@ -155,6 +187,117 @@ where
     pub fn into_input_output(self) -> Pin<P, { Mode::InputOutput }> {
         self.into_mode()
     }
+
+    /// Check whether this pin generated the interrupt.
+    pub fn interrupt_status(&self) -> bool {
+        let mask = interrupt_mask(self.index());
+
+        let reg = unsafe {
+            match self.index() {
+                0..=31 => (*pac::GPIO::ptr()).int0stat.as_ptr(),
+                _ => (*pac::GPIO::ptr()).int1stat.as_ptr(),
+            }
+        };
+
+        (unsafe { *reg & mask } != 0)
+    }
+
+    /// Enable interrupts for this pin. Remember to also [configure it](`Pin::configure_interrupt`).
+    pub fn enable_interrupt(&mut self) {
+        let mask = interrupt_mask(self.index());
+
+        let reg = unsafe {
+            match self.index() {
+                0..=31 => (*pac::GPIO::ptr()).int0en.as_ptr(),
+                _ => (*pac::GPIO::ptr()).int1en.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            *reg |= mask;
+        });
+    }
+
+    /// Configure the interrupt trigger.
+    pub fn configure_interrupt(&mut self, dir: InterruptOpt) {
+        use InterruptOpt::*;
+
+        gpio_cfg(|| unsafe {
+            match dir {
+                LowToHigh => {
+                    self.incfg(false);
+                    self.intd(false);
+                }
+                HighToLow => {
+                    self.incfg(false);
+                    self.intd(true);
+                }
+                Disabled => {
+                    self.incfg(true);
+                    self.intd(false);
+                }
+                Any => {
+                    self.incfg(true);
+                    self.intd(true);
+                }
+            }
+        });
+    }
+
+    /// Disable interrupts for this pin.
+    pub fn disable_interrupt(&mut self) {
+        let mask = interrupt_mask(self.index());
+
+        let reg = unsafe {
+            match self.index() {
+                0..=31 => (*pac::GPIO::ptr()).int0en.as_ptr(),
+                _ => (*pac::GPIO::ptr()).int1en.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            *reg &= !mask;
+        });
+    }
+
+    /// Clear the interrupt status for this pin.
+    pub fn clear_interrupt(&mut self) {
+        let mask = interrupt_mask(self.index());
+
+        let reg = unsafe {
+            match self.index() {
+                0..=31 => (*pac::GPIO::ptr()).int0clr.as_ptr(),
+                _ => (*pac::GPIO::ptr()).int1clr.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            *reg |= mask;
+        });
+    }
+
+    /// Instantly generate an interrupt (usually for testing purposes).
+    pub fn set_interrupt(&mut self) {
+        let mask = interrupt_mask(self.index());
+
+        let reg = unsafe {
+            match self.index() {
+                0..=31 => (*pac::GPIO::ptr()).int0clr.as_ptr(),
+                _ => (*pac::GPIO::ptr()).int1clr.as_ptr(),
+            }
+        };
+
+        gpio_cfg(|| unsafe {
+            *reg |= mask;
+        });
+    }
+}
+
+/// Interrupt register are ordered from highest pad no to lowest: 31 -> 0.
+///
+/// pad 31 -> bit offset 0
+const fn interrupt_mask(gpio: usize) -> u32 {
+    0b1u32 << (31 - gpio) % 32
 }
 
 impl<const P: usize, const M: Mode> IoPin<Pin<P, { Mode::Input }>, Pin<P, { Mode::Output }>>
@@ -324,11 +467,11 @@ fn write_state(p: usize, val: bool) {
     });
 }
 
-fn toggle_state(P: usize) {
-    let mask: u32 = 0b1u32 << P % 32;
+fn toggle_state(p: usize) {
+    let mask: u32 = 0b1u32 << p % 32;
 
     let reg = unsafe {
-        match P {
+        match p {
             0..=31 => (*pac::GPIO::ptr()).wta.as_ptr(),
             _ => (*pac::GPIO::ptr()).wtb.as_ptr(),
         }
