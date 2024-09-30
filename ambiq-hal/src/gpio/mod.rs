@@ -27,6 +27,8 @@ pub mod redboard_artemis;
 pub mod redboard_artemis_nano;
 
 pub use pin::Mode;
+pub use pin::InterruptOpt;
+pub use pin::{enable_gpio_interrupts, disable_gpio_interrupts};
 
 #[cfg(feature = "sparkfun-redboard")]
 pub use redboard_artemis::Pins;

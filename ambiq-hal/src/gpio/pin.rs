@@ -63,12 +63,16 @@ pub trait PinCfg {
 
     unsafe fn incfg(&mut self, f: bool);
     unsafe fn intd(&mut self, f: bool);
+    unsafe fn inten(&mut self, f: bool);
+    unsafe fn intstat(&self) -> bool;
+    unsafe fn intset(&mut self, f: bool);
+    unsafe fn intclr(&mut self, f: bool);
 
     fn index(&self) -> usize;
 }
 
 macro_rules! pin {
-    ($id:literal, $padreg:ident, $cfgreg: ident) => {
+    ($id:literal, $padreg:ident, $cfgreg: ident, $intreg:literal) => {
         paste! {
             pub type [<P $id>]<const MODE: Mode> = Pin<$id, MODE>;
 
@@ -110,6 +114,22 @@ macro_rules! pin {
                 unsafe fn intd(&mut self, f: bool) {
                     (*pac::GPIO::ptr()).[<cfg $cfgreg:lower>]
                         .write(|p| p.[< gpio $id intd >]().bit(f))
+                }
+
+                unsafe fn inten(&mut self, f: bool) {
+                    (*pac::GPIO::ptr()).[< int $intreg en >].write(|p| p.[< gpio $id >]().bit(f))
+                }
+
+                unsafe fn intset(&mut self, f: bool) {
+                    (*pac::GPIO::ptr()).[< int $intreg set >].write(|p| p.[< gpio $id >]().bit(f))
+                }
+
+                unsafe fn intclr(&mut self, f: bool) {
+                    (*pac::GPIO::ptr()).[< int $intreg clr >].write(|p| p.[< gpio $id >]().bit(f))
+                }
+
+                unsafe fn intstat(&self) -> bool {
+                    (*pac::GPIO::ptr()).[< int $intreg stat >].read().[< gpio $id >]().bit_is_set()
                 }
 
                 fn index(&self) -> usize {
@@ -202,31 +222,13 @@ where
 
     /// Check whether this pin generated the interrupt.
     pub fn interrupt_status(&self) -> bool {
-        let mask = interrupt_mask(self.index());
-
-        let reg = unsafe {
-            match self.index() {
-                0..=31 => (*pac::GPIO::ptr()).int0stat.as_ptr(),
-                _ => (*pac::GPIO::ptr()).int1stat.as_ptr(),
-            }
-        };
-
-        (unsafe { *reg & mask } != 0)
+        unsafe { self.intstat() }
     }
 
     /// Enable interrupts for this pin. Remember to [enable gpio interrupts globally](`enable_gpio_interrupts`) also [configure it](`Pin::configure_interrupt`).
     pub fn enable_interrupt(&mut self) {
-        let mask = interrupt_mask(self.index());
-
-        let reg = unsafe {
-            match self.index() {
-                0..=31 => (*pac::GPIO::ptr()).int0en.as_ptr(),
-                _ => (*pac::GPIO::ptr()).int1en.as_ptr(),
-            }
-        };
-
         gpio_cfg(|| unsafe {
-            *reg |= mask;
+            self.inten(true);
         });
     }
 
@@ -258,49 +260,22 @@ where
 
     /// Disable interrupts for this pin.
     pub fn disable_interrupt(&mut self) {
-        let mask = interrupt_mask(self.index());
-
-        let reg = unsafe {
-            match self.index() {
-                0..=31 => (*pac::GPIO::ptr()).int0en.as_ptr(),
-                _ => (*pac::GPIO::ptr()).int1en.as_ptr(),
-            }
-        };
-
         gpio_cfg(|| unsafe {
-            *reg &= !mask;
+            self.inten(false);
         });
     }
 
     /// Clear the interrupt status for this pin.
     pub fn clear_interrupt(&mut self) {
-        let mask = interrupt_mask(self.index());
-
-        let reg = unsafe {
-            match self.index() {
-                0..=31 => (*pac::GPIO::ptr()).int0clr.as_ptr(),
-                _ => (*pac::GPIO::ptr()).int1clr.as_ptr(),
-            }
-        };
-
         gpio_cfg(|| unsafe {
-            *reg |= mask;
+            self.intclr(true);
         });
     }
 
     /// Instantly generate an interrupt (usually for testing purposes).
     pub fn set_interrupt(&mut self) {
-        let mask = interrupt_mask(self.index());
-
-        let reg = unsafe {
-            match self.index() {
-                0..=31 => (*pac::GPIO::ptr()).int0clr.as_ptr(),
-                _ => (*pac::GPIO::ptr()).int1clr.as_ptr(),
-            }
-        };
-
         gpio_cfg(|| unsafe {
-            *reg |= mask;
+            self.intset(true);
         });
     }
 }
@@ -522,20 +497,20 @@ where
 
 // Declare the pins
 // Pad number, Pad register, Cfg register
-pin!(5, B, A);
-pin!(6, B, A);
-pin!(7, B, A);
-pin!(11, C, B);
-pin!(12, D, B);
-pin!(13, D, B);
-pin!(19, E, C);
-pin!(25, G, D);
-pin!(27, G, D);
-pin!(35, I, E);
-pin!(38, J, E);
-pin!(39, J, E);
-pin!(40, K, F);
-pin!(42, K, F);
-pin!(43, K, F);
-pin!(48, M, G);
-pin!(49, M, G);
+pin!(5, B, A, 0);
+pin!(6, B, A, 0);
+pin!(7, B, A, 0);
+pin!(11, C, B, 0);
+pin!(12, D, B, 0);
+pin!(13, D, B, 0);
+pin!(19, E, C, 0);
+pin!(25, G, D, 0);
+pin!(27, G, D, 0);
+pin!(35, I, E, 1);
+pin!(38, J, E, 1);
+pin!(39, J, E, 1);
+pin!(40, K, F, 1);
+pin!(42, K, F, 1);
+pin!(43, K, F, 1);
+pin!(48, M, G, 1);
+pin!(49, M, G, 1);

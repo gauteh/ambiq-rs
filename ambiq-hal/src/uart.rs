@@ -27,8 +27,13 @@ where
     rx: gpio::pin::Pin<RX, { Mode::Floating }>,
 }
 
-// unsafe impl Sync for Uart0 {}
-// unsafe impl Send for Uart0 {}
+// unsafe impl Sync for Uart0<TX, RX> {}
+unsafe impl<const TX: usize, const RX: usize> Send for Uart0<TX, RX>
+where
+    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
+    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
+{
+}
 
 trait UartInit {
     fn module() -> u32;
@@ -118,32 +123,26 @@ where
         tx: gpio::pin::P48<{ Mode::Floating }>,
         rx: gpio::pin::P49<{ Mode::Floating }>,
     ) -> Uart0<48, 49> {
-        Self::new_48_49(uart, tx, rx, 115200)
-    }
-
-    pub fn new_48_49(
-        uart: pac::UART0,
-        tx: gpio::pin::P48<{ Mode::Floating }>,
-        rx: gpio::pin::P49<{ Mode::Floating }>,
-        baudrate: u32,
-    ) -> Uart0<48, 49> {
-        init_uart(uart, tx, rx, baudrate)
+        new_48_49(uart, tx, rx, 115200)
     }
 }
 
-impl<const TX: usize, const RX: usize> Uart1<TX, RX>
-where
-    gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
-    gpio::pin::Pin<RX, { Mode::Floating }>: gpio::pin::PinCfg,
-{
-    pub fn new_12_13(
-        uart: pac::UART1,
-        tx: gpio::pin::P12<{ Mode::Floating }>,
-        rx: gpio::pin::P13<{ Mode::Floating }>,
-        baudrate: u32,
-    ) -> Uart1<12, 13> {
-        init_uart(uart, tx, rx, baudrate)
-    }
+pub fn new_48_49(
+    uart: pac::UART0,
+    tx: gpio::pin::P48<{ Mode::Floating }>,
+    rx: gpio::pin::P49<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart0<48, 49> {
+    init_uart(uart, tx, rx, baudrate)
+}
+
+pub fn new_12_13(
+    uart: pac::UART1,
+    tx: gpio::pin::P12<{ Mode::Floating }>,
+    rx: gpio::pin::P13<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart1<12, 13> {
+    init_uart(uart, tx, rx, baudrate)
 }
 
 impl<UART, const TX: usize, const RX: usize> Drop for Uart<UART, TX, RX>
