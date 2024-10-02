@@ -28,7 +28,7 @@ where
 }
 
 // unsafe impl Sync for Uart0<TX, RX> {}
-unsafe impl<U, const TX: usize, const RX: usize> Send for Uart<U, TX, RX>
+unsafe impl<UART, const TX: usize, const RX: usize> Send for Uart<UART, TX, RX>
 where
     UART: Deref<Target = pac::uart0::RegisterBlock>,
     gpio::pin::Pin<TX, { Mode::Floating }>: gpio::pin::PinCfg,
