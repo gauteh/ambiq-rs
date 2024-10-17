@@ -17,3 +17,4 @@ features = [ "ambiq-sdk", "sparkfun-redboard-nano", "rt"]
 [dev-dependencies]
 rtt-target = { version = "*", features = [ "cortex-m" ] }
 ufmt = "*"
+nb = "*"

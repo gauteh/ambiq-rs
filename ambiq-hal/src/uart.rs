@@ -36,7 +36,7 @@ where
 {
 }
 
-trait UartInit {
+pub trait UartInit {
     fn module() -> u32;
 }
 
@@ -138,11 +138,20 @@ pub fn new_48_49(
 }
 
 pub fn new_12_13(
-    uart: pac::UART1,
+    uart: pac::UART0,
     tx: gpio::pin::P12<{ Mode::Floating }>,
     rx: gpio::pin::P13<{ Mode::Floating }>,
     baudrate: u32,
-) -> Uart1<12, 13> {
+) -> Uart0<12, 13> {
+    init_uart(uart, tx, rx, baudrate)
+}
+
+pub fn new_39_40(
+    uart: pac::UART0,
+    tx: gpio::pin::P39<{ Mode::Floating }>,
+    rx: gpio::pin::P40<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart0<39, 40> {
     init_uart(uart, tx, rx, baudrate)
 }
 
