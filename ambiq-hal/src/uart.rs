@@ -96,13 +96,33 @@ where
         ui32RxBufferSize: 0,
     };
 
+    let module = <Uart<UART, TTX, RRX> as UartInit>::module();
+
     unsafe {
-        halc::am_hal_uart_initialize(<Uart<UART, TTX, RRX> as UartInit>::module(), &mut ph_uart);
+        halc::am_hal_uart_initialize(module, &mut ph_uart);
         halc::am_hal_uart_power_control(ph_uart, 0, false); // 0 = SYSTRL_WAKE
         halc::am_hal_uart_configure(ph_uart, &uart_config);
 
-        halc::am_hal_gpio_pinconfig(tx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_TX);
-        halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_RX);
+        let mut txconf = halc::g_AM_BSP_GPIO_COM_UART_TX.clone();
+        let mut rxconf = halc::g_AM_BSP_GPIO_COM_UART_TX.clone();
+        if module == 0 {
+            // halc::am_hal_gpio_pinconfig(tx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_TX);
+            // halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, halc::g_AM_BSP_GPIO_COM_UART_RX);
+        } else if module == 1 {
+            match tx.pin_num() {
+                12 => txconf.set_uFuncSel(halc::AM_HAL_PIN_12_UART1TX),
+                39 => txconf.set_uFuncSel(halc::AM_HAL_PIN_39_UART1TX),
+                _ => unimplemented!()
+            };
+
+            match rx.pin_num() {
+                13 => rxconf.set_uFuncSel(halc::AM_HAL_PIN_13_UART1RX),
+                40 => rxconf.set_uFuncSel(halc::AM_HAL_PIN_40_UART1RX),
+                _ => unimplemented!()
+            };
+        }
+        halc::am_hal_gpio_pinconfig(tx.pin_num() as u32, txconf);
+        halc::am_hal_gpio_pinconfig(rx.pin_num() as u32, rxconf);
     }
 
     Uart {
@@ -138,11 +158,29 @@ pub fn new_48_49(
 }
 
 pub fn new_12_13(
-    uart: pac::UART0,
+    uart: pac::UART1,
     tx: gpio::pin::P12<{ Mode::Floating }>,
     rx: gpio::pin::P13<{ Mode::Floating }>,
     baudrate: u32,
-) -> Uart0<12, 13> {
+) -> Uart1<12, 13> {
+    init_uart(uart, tx, rx, baudrate)
+}
+
+// pub fn new_12_38(
+//     uart: pac::UART0,
+//     tx: gpio::pin::P12<{ Mode::Floating }>,
+//     rx: gpio::pin::P38<{ Mode::Floating }>,
+//     baudrate: u32,
+// ) -> Uart0<12, 38> {
+//     init_uart(uart, tx, rx, baudrate)
+// }
+
+pub fn new_39_38(
+    uart: pac::UART0,
+    tx: gpio::pin::P39<{ Mode::Floating }>,
+    rx: gpio::pin::P38<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart0<39, 38> {
     init_uart(uart, tx, rx, baudrate)
 }
 
@@ -152,6 +190,33 @@ pub fn new_39_40(
     rx: gpio::pin::P40<{ Mode::Floating }>,
     baudrate: u32,
 ) -> Uart0<39, 40> {
+    init_uart(uart, tx, rx, baudrate)
+}
+
+pub fn new_39_40_1(
+    uart: pac::UART1,
+    tx: gpio::pin::P39<{ Mode::Floating }>,
+    rx: gpio::pin::P40<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart1<39, 40> {
+    init_uart(uart, tx, rx, baudrate)
+}
+
+// pub fn new_39_31(
+//     uart: pac::UART0,
+//     tx: gpio::pin::P39<{ Mode::Floating }>,
+//     rx: gpio::pin::P31<{ Mode::Floating }>,
+//     baudrate: u32,
+// ) -> Uart0<39, 31> {
+//     init_uart(uart, tx, rx, baudrate)
+// }
+
+pub fn new_39_29(
+    uart: pac::UART0,
+    tx: gpio::pin::P39<{ Mode::Floating }>,
+    rx: gpio::pin::P29<{ Mode::Floating }>,
+    baudrate: u32,
+) -> Uart0<39, 29> {
     init_uart(uart, tx, rx, baudrate)
 }
 

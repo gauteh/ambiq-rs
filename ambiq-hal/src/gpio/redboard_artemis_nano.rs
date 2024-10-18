@@ -13,6 +13,12 @@ pub struct Pins {
     /// * A0
     pub a2: P11<{ Mode::Floating }>,
 
+    /// * A3
+    pub a3: P29<{ Mode::Floating }>,
+
+    /// * A5
+    pub a5: P31<{ Mode::Floating }>,
+
     /// * D8
     pub d8: P38<{ Mode::Floating }>,
 
@@ -76,6 +82,8 @@ impl Pins {
             _gpio: gpio,
             a0: Pin::new(),
             a2: Pin::new(),
+            a3: Pin::new(),
+            a5: Pin::new(),
             d6: Pin::new(),
             d7: Pin::new(),
             d8: Pin::new(),

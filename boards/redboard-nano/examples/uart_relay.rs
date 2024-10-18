@@ -30,14 +30,22 @@ fn main() -> ! {
     let mut led = pins.d19.into_push_pull_output();
 
     // set up usb-serial
-    // let mut serial = hal::uart::new_48_49(dp.UART0, pins.tx0, pins.rx0, 400_000);
+    // let mut serial = hal::uart::new_48_49(dp.UART0, pins.tx0, pins.rx0, 400_000); // usb works
     // uwriteln!(serial, "Hello world from UART example!").unwrap();
+
+    // let uart0 = hal::pac::UART0::ptr();
+    // let uart0 = unsafe { *core::mem::transmute(uart0 as *const hal::pac::UART0) };
 
     // set up uart1 on a0 and a16
     // uwriteln!(serial, "Setting up GPS serial..");
-    // let mut gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 400_000);
-    // let uart0 = unsafe { *hal::pac::UART0::ptr() };
-    let mut gps_serial = hal::uart::new_39_40(dp.UART0, pins.d9, pins.d10, 100_000);
+    let mut gps_serial = hal::uart::new_12_13(dp.UART1, pins.a16, pins.a0, 100_000); // does not work
+    // let mut gps_serial = hal::uart::new_39_40(dp.UART0, pins.d9, pins.d10, 100_000); // works
+    // let mut gps_serial = hal::uart::new_39_40_1(dp.UART1, pins.d9, pins.d10, 100_000); // works?
+    // let mut gps_serial = hal::uart::new_39_38(dp.UART0, pins.d9, pins.d8, 100_000); // does not work
+    // let mut gps_serial = hal::uart::new_35_38(dp.UART0, pins.a14, pins.d8, 100_000); // does not work
+    // let mut gps_serial = hal::uart::new_12_38(dp.UART0, pins.a16, pins.d8, 100_000); // does not work
+    // let mut gps_serial = hal::uart::new_39_31(dp.UART0, pins.d9, pins.a5, 100_000); // does not work
+    // let mut gps_serial = hal::uart::new_39_29(dp.UART0, pins.d9, pins.a3, 100_000); // does not work
     uwriteln!(gps_serial, "GPS serial set up.");
     use hal::uart::UartInit;
     // uwriteln!(serial, "gps serial module: {}", hal::uart::Uart1::<39, 40>::module());
@@ -49,13 +57,14 @@ fn main() -> ! {
 
     let mut timestamp = rtc.now().timestamp_millis();
     loop {
-        led.toggle().unwrap();
-        uwriteln!(gps_serial, "GPS serial set up.");
+        // led.toggle().unwrap();
+        // uwriteln!(gps_serial, "GPS serial set up.");
 
         match gps_serial.read() {
             Ok(w) => {
                 // serial.write(w).ok();
                 gps_serial.write(w).ok();
+                led.toggle().unwrap();
             },
             Err(nb::Error::WouldBlock) => { /* wait */ } // TODO: timeout!
             Err(nb::Error::Other(e)) => {
