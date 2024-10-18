@@ -24,6 +24,12 @@ fn main() -> ! {
     let pins = hal::gpio::Pins::new(peripherals.GPIO);
     let mut led = pins.d19.into_push_pull_output();
 
+    led.set_high().unwrap();
+    delay.delay_ms(2000u32);
+
+    led.set_low().unwrap();
+    delay.delay_ms(2000u32);
+
     loop {
         led.toggle().unwrap();
         delay.delay_ms(100u32);

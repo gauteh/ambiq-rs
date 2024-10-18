@@ -67,8 +67,6 @@ pub trait PinCfg {
     unsafe fn intstat(&self) -> bool;
     unsafe fn intset(&mut self, f: bool);
     unsafe fn intclr(&mut self, f: bool);
-
-    fn index(&self) -> usize;
 }
 
 macro_rules! pin {
@@ -130,10 +128,6 @@ macro_rules! pin {
 
                 unsafe fn intstat(&self) -> bool {
                     (*pac::GPIO::ptr()).[< int $intreg stat >].read().[< gpio $id >]().bit_is_set()
-                }
-
-                fn index(&self) -> usize {
-                    $id
                 }
             }
         }
@@ -208,7 +202,7 @@ where
     }
 
     pub fn into_push_pull_output_val(self, high: bool) -> Pin<P, { Mode::Output }> {
-        write_state(P, high);
+        set_state(P);
         self.into_mode()
     }
 
@@ -301,7 +295,10 @@ where
     }
 
     fn into_output_pin(self, state: PinState) -> Result<Pin<P, { Mode::Output }>, Self::Error> {
-        write_state(P, matches!(state, PinState::High));
+        match state {
+            PinState::High => set_state(P),
+            PinState::Low => clear_state(P),
+        };
         Ok(self.into_push_pull_output())
     }
 }
@@ -361,12 +358,12 @@ where
     type Error = Infallible;
 
     fn set_low(&mut self) -> Result<(), Infallible> {
-        write_state(P, false);
+        clear_state(P);
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
-        write_state(P, true);
+        set_state(P);
         Ok(())
     }
 }
@@ -378,12 +375,12 @@ where
     type Error = Infallible;
 
     fn set_low(&mut self) -> Result<(), Infallible> {
-        write_state(P, false);
+        clear_state(P);
         Ok(())
     }
 
     fn set_high(&mut self) -> Result<(), Infallible> {
-        write_state(P, true);
+        set_state(P);
         Ok(())
     }
 }
@@ -435,7 +432,7 @@ fn read_input_state(p: usize) -> bool {
     (unsafe { *reg & mask } != 0)
 }
 
-fn write_state(p: usize, val: bool) {
+fn set_state(p: usize) {
     let mask: u32 = 0b1u32 << p % 32;
 
     let reg = unsafe {
@@ -446,11 +443,22 @@ fn write_state(p: usize, val: bool) {
     };
 
     gpio_cfg(|| unsafe {
-        if val {
-            *reg |= mask;
-        } else {
-            *reg &= !mask;
+        *reg |= mask;
+    });
+}
+
+fn clear_state(p: usize) {
+    let mask: u32 = 0b1u32 << p % 32;
+
+    let reg = unsafe {
+        match p {
+            0..=31 => (*pac::GPIO::ptr()).wtca.as_ptr(),
+            _ => (*pac::GPIO::ptr()).wtcb.as_ptr(),
         }
+    };
+
+    gpio_cfg(|| unsafe {
+        *reg |= mask;
     });
 }
 
