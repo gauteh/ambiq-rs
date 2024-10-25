@@ -98,7 +98,7 @@ impl Rtc {
 
     /// Get the current datetime (accurate to 1/100th second). Blocks untill no rollover
     /// error.
-    pub fn now(&self) -> chrono::NaiveDateTime {
+    pub fn now(&self) -> Option<chrono::NaiveDateTime> {
         let (upper, lower) = loop {
             let lower = self.rtc.ctrlow.read();
 
@@ -125,7 +125,7 @@ impl Rtc {
             bcd_to_dec(lower.ctrmin().bits()).into(),
             bcd_to_dec(lower.ctrsec().bits()).into(),
             u32::from(bcd_to_dec(lower.ctr100().bits())) * 10u32,
-        )).unwrap()
+        ))
     }
 
     /// Set the repeat alarm interval. Remember to enable the alarm as well.
@@ -176,7 +176,7 @@ impl DateTimeAccess for Rtc {
     type Error = !;
 
     fn datetime(&mut self) -> Result<chrono::NaiveDateTime, !> {
-        Ok(self.now())
+        Ok(self.now().unwrap())
     }
 
     fn set_datetime(&mut self, datetime: &chrono::NaiveDateTime) -> Result<(), !> {
