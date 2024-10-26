@@ -18,6 +18,11 @@ pub struct Rtc {
     rtc: RTC,
 }
 
+#[derive(defmt::Format)]
+pub enum RtccError {
+    Generic,
+}
+
 fn bcd_to_dec(bcd: u8) -> u8 {
     (((bcd & 0xf0) >> 4) * 10) + (bcd & 0x0f)
 }
@@ -173,13 +178,13 @@ impl Rtc {
 }
 
 impl DateTimeAccess for Rtc {
-    type Error = !;
+    type Error = RtccError;
 
-    fn datetime(&mut self) -> Result<chrono::NaiveDateTime, !> {
-        Ok(self.now().unwrap())
+    fn datetime(&mut self) -> Result<chrono::NaiveDateTime, RtccError> {
+        self.now().ok_or(RtccError::Generic)
     }
 
-    fn set_datetime(&mut self, datetime: &chrono::NaiveDateTime) -> Result<(), !> {
+    fn set_datetime(&mut self, datetime: &chrono::NaiveDateTime) -> Result<(), RtccError> {
         self.set(datetime);
 
         Ok(())
