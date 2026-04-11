@@ -46,7 +46,7 @@ trait Iom {
         defmt::trace!("wait transfer..");
         // wait for previous transfer, this check is only necessary if
         // the previous write was aborted due to e.g. a timeout.
-        for _ in 0..500_000 {
+        for _ in 0..1_000_000 {
             if self.is_ready() {
                 defmt::trace!("wait transfer: transfer done.");
                 return Ok(());
